@@ -1,4 +1,4 @@
-name: Promote Zheta Forge (disabled candidate)
+name: Promote HelixWorks (disabled candidate)
 on:
   workflow_dispatch:
     inputs:
