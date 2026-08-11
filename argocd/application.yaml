@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: zheta
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ZGTR/zheta-kubernetes-lab.git
+    targetRevision: master
+    path: gitops/apps/zheta/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: zheta
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+
