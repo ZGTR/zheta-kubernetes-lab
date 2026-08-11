@@ -12,7 +12,7 @@ make product-smoke   # Prove create-to-delete behavior through HTTP evidence.
 make product-stop    # Remove only this repository's Compose containers/network.
 ```
 
-The smoke run creates a support application, deterministically generates it, previews it, grants machine connector authority, shares and revokes a collaborator, publishes an immutable release, rolls back, exports, retires, and deletes it. Read [the architecture](docs/architecture.md) for the three authorization planes and [the environment contract](docs/environments.md) for promotion rules.
+The smoke run creates a support application, deterministically generates it, previews it, grants machine connector authority, shares and revokes a collaborator, publishes a content-addressed release record, rolls back, exports, retires, and tombstones it. Read [the architecture](docs/architecture.md) for the three authorization planes and [the environment contract](docs/environments.md) for promotion rules.
 
 To run the same service responsibilities on Kind:
 
@@ -25,7 +25,7 @@ make product-smoke
 
 AWS declarations live under `infra/stacks/{dev,staging,prod}`. Each stack targets a different AWS account and EKS cluster. They are reviewable IaC only: this repository never supplies credentials or performs an AWS apply automatically.
 
-This is the single public monorepo used by both courses. The local Kind lab remains under `terraform/`, while product services, Kubernetes/GitOps delivery, and isolated AWS stacks deepen the same running system. See [the stable course snippet index](docs/course-snippets.md). Cloud overlays intentionally render zero service replicas and carry `blocked-unpinned` until the authenticated promotion workflow pins four real ECR digests and proves durable runtime secrets exist in the target private cluster. Until that gate passes, the cloud path is not production-ready and Argo CD cannot start the product.
+This is the single public monorepo used by both courses. The local Kind lab remains under `terraform/`, while product services, Kubernetes/GitOps delivery, and isolated AWS stacks deepen the same running system. See [the stable course snippet index](docs/course-snippets.md). Cloud overlays intentionally render zero service replicas. The candidate public promotion workflow is disabled until its third-party actions are immutably pinned and it produces scan, signature, and SBOM evidence. A separate private-runner command proves the exact AWS account, durable secrets, and cluster identity before it enables replicas. Public ingress/TLS/WAF, live PostgreSQL migration proof, restore proof, authenticated cloud product smoke, and any KEDA or Karpenter installation remain explicit launch vetoes rather than implied features.
 
 The most important idea is that there is not one magic “Kubernetes recovery” mechanism. Three independent reconciliation loops own three different kinds of desired state:
 

@@ -5,7 +5,7 @@ from services.control_plane.domain import Forge
 from services.generator.app import generate
 from services.shared.auth import verify_bearer
 from services.shared.persistence import Database, JsonProjectRepository, SqlEventStore
-from services.shared.broker import SQLiteTopic, parse_sqs_body
+from services.shared.broker import SQLiteTopic, parse_sqs_body, publisher_from_url, subscriber_from_url
 
 class FakeGenerator:
     def generate(self, blueprint): return generate(blueprint)
@@ -13,6 +13,11 @@ class FakeRuntime:
     def __init__(self): self.apps = {}
     def deploy(self, organization_id, app_id, payload): self.apps[(organization_id, app_id)] = payload; return payload
     def delete(self, organization_id, app_id): self.apps.pop((organization_id, app_id), None)
+class FailOnceRuntime(FakeRuntime):
+    def __init__(self): super().__init__(); self.fail = True
+    def deploy(self, organization_id, app_id, payload):
+        if self.fail: self.fail = False; raise RuntimeError("bounded runtime failure")
+        return super().deploy(organization_id, app_id, payload)
 class DurableEvents:
     def __init__(self, store): self.store = store
     def publish(self, event):
@@ -32,6 +37,15 @@ class ForgeLifecycleTest(unittest.TestCase):
         restored = second_instance.get("acme", "helpdesk")
         first = second_instance.publish(restored, "owner", "request-1"); duplicate = self.forge.publish(self.forge.get("acme", "helpdesk"), "owner", "request-1")
         self.assertEqual(first, duplicate); self.assertEqual(1, len(self.forge.get("acme", "helpdesk").releases))
+    def test_pending_publish_recovers_with_same_idempotency_key(self):
+        self.forge.generate(self.project, "owner"); failing = FailOnceRuntime(); forge = Forge(self.repository, FakeGenerator(), failing, self.artifacts, DurableEvents(self.events)); project = forge.get("acme", "helpdesk")
+        with self.assertRaises(RuntimeError): forge.publish(project, "owner", "recover-1")
+        recovered = forge.publish(forge.get("acme", "helpdesk"), "owner", "recover-1")
+        self.assertEqual("deployed", recovered["state"]); self.assertEqual(1, len(forge.get("acme", "helpdesk").releases))
+    def test_optimistic_concurrency_rejects_stale_writer(self):
+        first = self.forge.get("acme", "helpdesk"); stale = self.forge.get("acme", "helpdesk")
+        self.forge.share(first, "owner", "one")
+        with self.assertRaisesRegex(RuntimeError, "concurrent project update"): self.forge.share(stale, "owner", "two")
     def test_tenant_boundary_and_tombstone_preserve_evidence(self):
         with self.assertRaises(KeyError): self.forge.get("other-org", "helpdesk")
         self.forge.generate(self.project, "owner"); self.forge.retire(self.project, "owner"); self.forge.delete(self.project, "owner")
@@ -61,5 +75,12 @@ class PubSubTest(unittest.TestCase):
         event = {"action": "published"}
         self.assertEqual(event, parse_sqs_body(json.dumps(event)))
         self.assertEqual(event, parse_sqs_body(json.dumps({"Message": json.dumps(event)})))
+    def test_evidence_store_does_not_ack_database_failure_as_duplicate(self):
+        with tempfile.TemporaryDirectory() as root:
+            database = Database(f"sqlite:///{root}/evidence.db"); store = SqlEventStore(database); database.connection.close()
+            with self.assertRaises(Exception): store.append({"evidence_id": "e1", "organization_id": "acme", "project_id": "p1"})
+    def test_cloud_broker_endpoints_are_structurally_validated(self):
+        with self.assertRaises(ValueError): publisher_from_url("arn:aws:sns:eu-west-2:123:events.fifo")
+        with self.assertRaises(ValueError): subscriber_from_url("https://sqs.eu-west-2.amazonaws.com/not-an-account/evidence.fifo")
 
 if __name__ == "__main__": unittest.main()

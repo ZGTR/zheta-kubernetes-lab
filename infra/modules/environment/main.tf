@@ -63,7 +63,6 @@ resource "aws_subnet" "private" {
   cidr_block        = cidrsubnet(var.vpc_cidr, 4, count.index + 8)
   tags = merge(local.tags, {
     "kubernetes.io/role/internal-elb" = "1"
-    "karpenter.sh/discovery"          = local.name
   })
 }
 
@@ -263,7 +262,7 @@ resource "aws_iam_role_policy" "workload" {
       Effect   = "Allow"
       Action   = ["secretsmanager:GetSecretValue"]
       Resource = each.key == "runtime" ? aws_rds_cluster.application.master_user_secret[0].secret_arn : each.key == "evidence" ? aws_rds_cluster.evidence.master_user_secret[0].secret_arn : aws_rds_cluster.control.master_user_secret[0].secret_arn
-    }], each.key == "control-plane" ? [{ Effect = "Allow", Action = ["s3:GetObject", "s3:PutObject"], Resource = "${aws_s3_bucket.artifacts.arn}/control-plane/*" }, { Effect = "Allow", Action = ["sns:Publish"], Resource = aws_sns_topic.events.arn }] : [], each.key == "generator" ? [{ Effect = "Allow", Action = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"], Resource = aws_sqs_queue.generation.arn }, { Effect = "Allow", Action = ["s3:GetObject", "s3:PutObject"], Resource = "${aws_s3_bucket.artifacts.arn}/generator/*" }] : [], each.key == "runtime" ? [{ Effect = "Allow", Action = ["s3:GetObject"], Resource = "${aws_s3_bucket.artifacts.arn}/control-plane/*" }] : [], each.key == "evidence" ? [{ Effect = "Allow", Action = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"], Resource = aws_sqs_queue.evidence.arn }] : [])
+    }], each.key == "control-plane" ? [{ Effect = "Allow", Action = ["s3:GetObject", "s3:PutObject"], Resource = "${aws_s3_bucket.artifacts.arn}/control-plane/*" }, { Effect = "Allow", Action = ["sns:Publish"], Resource = aws_sns_topic.events.arn }] : [], each.key == "generator" ? [{ Effect = "Allow", Action = ["s3:GetObject", "s3:PutObject"], Resource = "${aws_s3_bucket.artifacts.arn}/generator/*" }] : [], each.key == "runtime" ? [{ Effect = "Allow", Action = ["s3:GetObject"], Resource = "${aws_s3_bucket.artifacts.arn}/control-plane/*" }] : [], each.key == "evidence" ? [{ Effect = "Allow", Action = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"], Resource = aws_sqs_queue.evidence.arn }] : [])
   })
 }
 resource "aws_eks_pod_identity_association" "workload" {
@@ -315,24 +314,6 @@ resource "aws_s3_bucket_public_access_block" "artifacts" {
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
-}
-resource "aws_sqs_queue" "generation_dlq" {
-  name                        = "${local.name}-generation-dlq.fifo"
-  fifo_queue                  = true
-  content_based_deduplication = true
-  kms_master_key_id           = aws_kms_key.data.key_id
-  message_retention_seconds   = 1209600
-  tags                        = local.tags
-}
-resource "aws_sqs_queue" "generation" {
-  name                        = "${local.name}-generation.fifo"
-  fifo_queue                  = true
-  content_based_deduplication = true
-  kms_master_key_id           = aws_kms_key.data.key_id
-  redrive_policy = jsonencode({
-    deadLetterTargetArn = aws_sqs_queue.generation_dlq.arn, maxReceiveCount = 5
-  })
-  tags = local.tags
 }
 resource "aws_sns_topic" "events" {
   name                        = "${local.name}-events.fifo"

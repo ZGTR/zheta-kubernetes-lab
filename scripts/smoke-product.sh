@@ -14,4 +14,11 @@ post /projects/support/rollback '{"release_id":"rel-1"}'
 post /projects/support/export '{}'
 post /projects/support/retire '{}'
 curl --fail --silent --show-error -X DELETE -H "$auth_header" "$base_url/projects/support"
-printf '\nZheta Forge lifecycle completed with authenticated, durable HTTP evidence.\n'
+printf '\n'
+for attempt in $(seq 1 30); do
+  evidence_count="$(curl --fail --silent --show-error -H "$auth_header" "$base_url/evidence" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)["events"]))')"
+  [ "$evidence_count" -ge 10 ] && break
+  sleep 1
+done
+[ "$evidence_count" -ge 10 ] || { echo "durable evidence did not catch up" >&2; exit 1; }
+printf 'Zheta Forge lifecycle completed with authenticated durable evidence_events=%s.\n' "$evidence_count"

@@ -41,6 +41,7 @@ class Project:
     releases: list[dict[str, str]] = field(default_factory=list)
     collaborators: set[str] = field(default_factory=set)
     connector_grants: set[str] = field(default_factory=set)
+    version: int = 1
 
 
 class Forge:
@@ -104,15 +105,23 @@ class Forge:
             raise ValueError("Idempotency-Key required")
         existing = next((release for release in project.releases if release["idempotency_key"] == idempotency_key), None)
         if existing:
-            return existing
+            if existing.get("state") == "deployed": return existing
+            return self._complete_publish(project, actor, existing)
         artifact = self._latest(project)
-        release = {"release_id": f"rel-{len(project.releases) + 1}", "artifact_id": artifact["artifact_id"], "idempotency_key": idempotency_key}
+        release = {"release_id": f"rel-{len(project.releases) + 1}", "artifact_id": artifact["artifact_id"], "idempotency_key": idempotency_key, "state": "pending"}
         project.releases.append(release)
         project.status = "published"
         with self.repository.transaction():
             self.repository.save(project)
+            self._audit(project, actor, "release.requested")
+        return self._complete_publish(project, actor, release)
+
+    def _complete_publish(self, project: Project, actor: str, release: dict[str, str]) -> dict[str, str]:
+        self.runtime.deploy(project.organization_id, project.project_id, {"mode": "published", **release, "source": self.artifacts.get(project.organization_id, release["artifact_id"])})
+        release["state"] = "deployed"
+        with self.repository.transaction():
+            self.repository.save(project)
             self._audit(project, actor, "release.published")
-        self.runtime.deploy(project.organization_id, project.project_id, {"mode": "published", **release, "source": self.artifacts.get(project.organization_id, artifact["artifact_id"])})
         return release
 
     def rollback(self, project: Project, actor: str, release_id: str) -> dict[str, str]:

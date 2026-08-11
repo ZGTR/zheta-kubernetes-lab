@@ -28,6 +28,8 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args: object) -> None: return
 
 from services.shared.auth import require_service_token
+from services.shared.config import required_secret
 SERVICE_TOKEN = os.getenv("SERVICE_TOKEN", "")
 if __name__ == "__main__":
+    required_secret("SERVICE_TOKEN")
     ThreadingHTTPServer(("0.0.0.0", int(os.getenv("PORT", "8080"))), Handler).serve_forever()

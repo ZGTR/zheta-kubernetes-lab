@@ -1,6 +1,6 @@
 # Zheta Forge architecture
 
-Zheta Forge is not one generated web page. It is a bounded platform that turns an organization-owned blueprint into an immutable release while keeping provider administration, hosted runtime, and generated-application data independently authorized and revocable.
+Zheta Forge is not one generated web page. It is a bounded platform that turns an organization-owned blueprint into a content-addressed release record while keeping provider administration, hosted runtime, and generated-application authority independently revocable.
 
 ```mermaid
 flowchart LR
@@ -20,11 +20,11 @@ The smallest useful request path is builder to control plane to generator to run
 | Create | Create an organization-scoped blueprint | provider control plane | project identity and actor |
 | Generate | Produce the same artifact for the same blueprint | generator, artifact store | content digest |
 | Preview/interact | Deploy an unpublished artifact | hosted runtime | preview deployment identity |
-| Managed data | Store generated-app tenant records | generated-application data plane | tenant-scoped data key |
+| Managed data | Store tenant-scoped deployment metadata | hosted runtime boundary | tenant and app composite key |
 | Connect | Grant a machine identity to one connector | provider control plane | independently revocable grant |
 | Identify | Resolve organization actor and role | provider identity boundary | accepted or denied actor/scope |
 | Share/revoke | Change collaborator access | provider control plane | grant or revocation event |
-| Publish | Bind an immutable artifact to a release | hosted runtime | release and artifact IDs |
+| Publish | Bind a digest-addressed artifact to a recoverable release state | hosted runtime | release, artifact, idempotency, and deployment state |
 | Change/rollback | Deploy a new digest or restore an old release | hosted runtime | deployment/rollback event |
 | Operate/support | Observe health, denial, and recovery | evidence service | timestamped evidence ID |
 | Export/retire/delete | Return owned metadata, stop runtime, then erase control state | owning service at each boundary | export, retirement, deletion events |
@@ -40,7 +40,9 @@ The control plane contains workflow policy and depends on small interfaces for g
 - `runtime`: preview and published deployment state; it cannot change provider membership.
 - `evidence`: append-only observations; it cannot authorize the action it records.
 
-For local learning these stores are intentionally in-memory, so process restart proves what is not production-ready. AWS replaces them with Aurora PostgreSQL, encrypted S3, and SQS while preserving the service ownership boundaries. Database adapters and workload identity are the next production implementation seam; no lesson should confuse the runnable analogue with durable production state.
+For local learning these stores are durable SQLite files and a local broker with independent subscriber acknowledgements. They prove restart, tombstone, idempotency, and fan-out behavior on one machine; they do not prove multi-host PostgreSQL, S3, SNS/SQS, backup restore, or generated-application business-data authorization. AWS declarations provision those managed boundaries, but launch stays blocked until private-runner and live integration proofs exist.
+
+The current runtime owns deployment metadata and generated source delivery. It does not yet implement arbitrary generated-application business tables, end-user sessions, or row-level authorization. Course material must treat those as a bounded platform extension, not as shipped behavior.
 
 ## From declaration to physical reality
 

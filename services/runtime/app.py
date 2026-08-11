@@ -3,8 +3,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from services.shared.auth import require_service_token
 from services.shared.http import read_json, write_json
 from services.shared.persistence import Database
+from services.shared.config import is_cloud, required_secret, required_url
 
 SERVICE_TOKEN = os.getenv("SERVICE_TOKEN", "")
+required_secret("SERVICE_TOKEN")
+if is_cloud(): required_url("RUNTIME_DATABASE_URL", ("postgresql://",))
 DATABASE = Database(os.getenv("RUNTIME_DATABASE_URL", "sqlite:///.lab/runtime.db"))
 DATABASE.migrate("runtime.sql")
 

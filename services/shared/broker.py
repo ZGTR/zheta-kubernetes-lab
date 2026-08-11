@@ -1,5 +1,5 @@
 """Pub/Sub ports: per-subscriber SQLite offsets locally, SNS/SQS fan-out in AWS."""
-import json
+import json, re
 import urllib.request
 from services.shared.persistence import Database
 
@@ -56,11 +56,13 @@ class HttpTopic:
 def publisher_from_url(url: str, token: str = ""):
     if url.startswith("sqlite:///"): return SQLiteTopic(url)
     if url.startswith("http://") or url.startswith("https://"): return HttpTopic(url, token)
-    if url.startswith("arn:aws:sns:"): return SnsTopic(url)
+    if re.fullmatch(r"arn:aws:sns:[a-z0-9-]+:[0-9]{12}:[A-Za-z0-9_.-]+\.fifo", url): return SnsTopic(url)
     raise ValueError("BROKER_TOPIC must be SQLite or an SNS topic ARN")
 
 def subscriber_from_url(url: str, token: str = ""):
     if url.startswith("sqlite:///"): return SQLiteTopic(url)
+    if url.startswith("https://sqs.") or url.startswith("https://sqs-"):
+        if re.fullmatch(r"https://sqs[.-][a-z0-9-]+\.amazonaws\.com/[0-9]{12}/[A-Za-z0-9_.-]+\.fifo", url): return SqsSubscription(url)
+        raise ValueError("BROKER_SUBSCRIPTION must be a valid FIFO SQS queue URL")
     if url.startswith("http://") or url.startswith("https://"): return HttpTopic(url, token)
-    if url.startswith("https://sqs.") or url.startswith("https://sqs-"): return SqsSubscription(url)
     raise ValueError("BROKER_SUBSCRIPTION must be SQLite or an SQS queue URL")

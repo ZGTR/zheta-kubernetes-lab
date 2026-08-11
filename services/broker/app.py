@@ -3,8 +3,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from services.shared.auth import require_service_token
 from services.shared.broker import SQLiteTopic
 from services.shared.http import read_json, write_json
+from services.shared.config import is_cloud, required_secret
 
 TOKEN = os.getenv("SERVICE_TOKEN", "")
+required_secret("SERVICE_TOKEN")
+if is_cloud(): raise RuntimeError("the SQLite broker is local-only; cloud must use SNS/SQS")
 TOPIC = SQLiteTopic(os.getenv("BROKER_DATABASE_URL", "sqlite:///.lab/broker.db"))
 class Handler(BaseHTTPRequestHandler):
     def auth(self): require_service_token(self.headers.get("X-Service-Token"), TOKEN)

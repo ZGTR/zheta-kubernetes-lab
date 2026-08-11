@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 source "$(dirname "$0")/lib.sh"
 require_command kubectl
+require_command ruby
 terraform_bin="${TERRAFORM_BIN:-terraform}"
 require_command "$terraform_bin"
 terraform_version="$($terraform_bin version -json | ruby -rjson -e 'puts JSON.parse(STDIN.read).fetch("terraform_version")')"
@@ -17,10 +18,16 @@ for stack in dev staging prod; do
 done
 ! rg -n 'registry\.example|sha256:(a{64}|b{64}|c{64})' "$REPO_ROOT/gitops/apps/forge/overlays"
 grep -q 'replicas: 0' "$REPO_ROOT/gitops/apps/forge/base/workloads.yaml"
-for environment in dev staging prod; do grep -q 'blocked-unpinned' "$REPO_ROOT/gitops/apps/forge/overlays/$environment/kustomization.yaml"; done
+for environment in dev staging prod; do
+  overlay="$REPO_ROOT/gitops/apps/forge/overlays/$environment/kustomization.yaml"
+  if grep -q 'blocked-unpinned' "$overlay"; then
+    ! grep -q 'digest:' "$overlay"
+  else
+    "$REPO_ROOT/scripts/verify-release.sh" "$environment"
+  fi
+done
 for overlay in local dev staging prod; do kubectl kustomize "$REPO_ROOT/gitops/apps/forge/overlays/$overlay" >/dev/null; done
-require_command ruby
-for manifest in "$REPO_ROOT/argocd/project.yaml" "$REPO_ROOT"/argocd/applicationsets/*.yaml "$REPO_ROOT"/argocd/addons/*.yaml; do
+for manifest in "$REPO_ROOT/argocd/project.yaml" "$REPO_ROOT"/argocd/applicationsets/*.yaml; do
   ruby -e 'require "yaml"; YAML.load_stream(File.read(ARGV.fetch(0)))' "$manifest"
 done
 if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then docker compose -f "$REPO_ROOT/compose.yaml" config >/dev/null; fi

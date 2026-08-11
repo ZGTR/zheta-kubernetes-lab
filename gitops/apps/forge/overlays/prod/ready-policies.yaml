@@ -12,22 +12,3 @@ spec:
   maxReplicas: 20
   behavior: { scaleDown: { stabilizationWindowSeconds: 600 } }
   metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 60 } } }]
----
-apiVersion: keda.sh/v1alpha1
-kind: TriggerAuthentication
-metadata: { name: generator-aws, namespace: zheta-forge }
-spec: { podIdentity: { provider: aws } }
----
-apiVersion: keda.sh/v1alpha1
-kind: ScaledObject
-metadata: { name: generator, namespace: zheta-forge }
-spec:
-  scaleTargetRef: { name: generator, envSourceContainerName: generator }
-  minReplicaCount: 3
-  maxReplicaCount: 50
-  pollingInterval: 15
-  cooldownPeriod: 300
-  triggers:
-    - type: aws-sqs-queue
-      metadata: { queueURLFromEnv: GENERATION_QUEUE_URL, awsRegionFromEnv: AWS_REGION, queueLength: "5" }
-      authenticationRef: { name: generator-aws }

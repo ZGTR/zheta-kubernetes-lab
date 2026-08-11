@@ -1,26 +1,23 @@
 services:
   broker:
     build: { context: ., dockerfile: services/Dockerfile, args: { SERVICE: broker } }
-    environment: { SERVICE_TOKEN: "local-service-token-32-characters-minimum", BROKER_DATABASE_URL: "sqlite:////data/broker.db" }
+    environment: { ENVIRONMENT: local, SERVICE_TOKEN: "local-service-token-32-characters-minimum", BROKER_DATABASE_URL: "sqlite:////data/broker.db" }
     volumes: ["broker-data:/data"]
   evidence:
     build: { context: ., dockerfile: services/Dockerfile, args: { SERVICE: evidence } }
-    ports: ["8083:8080"]
-    environment: { SERVICE_TOKEN: "local-service-token-32-characters-minimum", EVIDENCE_DATABASE_URL: "sqlite:////data/evidence.db", BROKER_SUBSCRIPTION: "http://broker:8080" }
+    environment: { ENVIRONMENT: local, SERVICE_TOKEN: "local-service-token-32-characters-minimum", EVIDENCE_DATABASE_URL: "sqlite:////data/evidence.db", BROKER_SUBSCRIPTION: "http://broker:8080" }
     volumes: ["evidence-data:/data"]
     depends_on: [broker]
   generator:
     build: { context: ., dockerfile: services/Dockerfile, args: { SERVICE: generator } }
-    ports: ["8081:8080"]
-    environment: { SERVICE_TOKEN: "local-service-token-32-characters-minimum" }
+    environment: { ENVIRONMENT: local, SERVICE_TOKEN: "local-service-token-32-characters-minimum" }
   runtime:
     build: { context: ., dockerfile: services/Dockerfile, args: { SERVICE: runtime } }
-    ports: ["8082:8080"]
-    environment: { SERVICE_TOKEN: "local-service-token-32-characters-minimum", RUNTIME_DATABASE_URL: "sqlite:////data/runtime.db" }
+    environment: { ENVIRONMENT: local, SERVICE_TOKEN: "local-service-token-32-characters-minimum", RUNTIME_DATABASE_URL: "sqlite:////data/runtime.db" }
     volumes: ["runtime-data:/data"]
   control-plane:
     build: { context: ., dockerfile: services/Dockerfile, args: { SERVICE: control_plane } }
-    environment: { GENERATOR_URL: "http://generator:8080", RUNTIME_URL: "http://runtime:8080", SERVICE_TOKEN: "local-service-token-32-characters-minimum", JWT_SECRET: "local-jwt-secret-32-characters-minimum", CONTROL_DATABASE_URL: "sqlite:////data/control.db", ARTIFACT_DATABASE_URL: "sqlite:////data/artifacts.db", BROKER_TOPIC: "http://broker:8080" }
+    environment: { ENVIRONMENT: local, GENERATOR_URL: "http://generator:8080", RUNTIME_URL: "http://runtime:8080", EVIDENCE_URL: "http://evidence:8080", SERVICE_TOKEN: "local-service-token-32-characters-minimum", JWT_SECRET: "local-jwt-secret-32-characters-minimum", CONTROL_DATABASE_URL: "sqlite:////data/control.db", ARTIFACT_DATABASE_URL: "sqlite:////data/artifacts.db", BROKER_TOPIC: "http://broker:8080" }
     volumes: ["control-data:/data"]
     ports: ["8080:8080"]
     depends_on: [generator, runtime, evidence, broker]

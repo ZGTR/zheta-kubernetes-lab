@@ -30,11 +30,12 @@ class Database:
     def sql(self, statement: str) -> str:
         return statement if self.kind == "sqlite" else statement.replace("?", "%s")
 
-    def execute(self, statement: str, values: tuple[object, ...] = ()) -> None:
+    def execute(self, statement: str, values: tuple[object, ...] = ()):
         with self._lock:
-            self.connection.execute(self.sql(statement), values)
+            cursor = self.connection.execute(self.sql(statement), values)
             if self.kind == "sqlite" and not getattr(self._local, "transaction", False):
                 self.connection.commit()
+            return cursor
 
     @contextmanager
     def transaction(self):
@@ -76,20 +77,28 @@ class JsonProjectRepository:
         database.migrate("control.sql")
 
     def get(self, organization_id: str, project_id: str) -> dict[str, object] | None:
-        row = self.database.one("SELECT payload FROM projects WHERE organization_id=? AND project_id=? AND deleted_at IS NULL", (organization_id, project_id))
-        return json.loads(row[0]) if row else None
+        row = self.database.one("SELECT payload, version FROM projects WHERE organization_id=? AND project_id=? AND deleted_at IS NULL", (organization_id, project_id))
+        if not row: return None
+        value = json.loads(row[0]); value["version"] = row[1]; return value
 
     def create(self, organization_id: str, project_id: str, payload: dict[str, object]) -> None:
         try:
             self.database.execute("INSERT INTO projects (organization_id, project_id, payload, version) VALUES (?, ?, ?, 1)", (organization_id, project_id, json.dumps(payload, sort_keys=True)))
-        except Exception as error:
+        except sqlite3.IntegrityError as error:
             raise ValueError("project already exists") from error
+        except Exception as error:
+            if error.__class__.__name__ == "UniqueViolation":
+                raise ValueError("project already exists") from error
+            raise
 
-    def save(self, organization_id: str, project_id: str, payload: dict[str, object]) -> None:
-        self.database.execute("UPDATE projects SET payload=?, version=version+1 WHERE organization_id=? AND project_id=? AND deleted_at IS NULL", (json.dumps(payload, sort_keys=True), organization_id, project_id))
+    def save(self, organization_id: str, project_id: str, payload: dict[str, object], expected_version: int) -> int:
+        cursor = self.database.execute("UPDATE projects SET payload=?, version=version+1 WHERE organization_id=? AND project_id=? AND version=? AND deleted_at IS NULL", (json.dumps(payload, sort_keys=True), organization_id, project_id, expected_version))
+        if cursor.rowcount != 1: raise RuntimeError("concurrent project update; reload and retry")
+        return expected_version + 1
 
-    def tombstone(self, organization_id: str, project_id: str) -> None:
-        self.database.execute("UPDATE projects SET payload='{}', deleted_at=CURRENT_TIMESTAMP, version=version+1 WHERE organization_id=? AND project_id=? AND deleted_at IS NULL", (organization_id, project_id))
+    def tombstone(self, organization_id: str, project_id: str, expected_version: int) -> None:
+        cursor = self.database.execute("UPDATE projects SET payload='{}', deleted_at=CURRENT_TIMESTAMP, version=version+1 WHERE organization_id=? AND project_id=? AND version=? AND deleted_at IS NULL", (organization_id, project_id, expected_version))
+        if cursor.rowcount != 1: raise RuntimeError("concurrent project deletion; reload and retry")
 
     def transaction(self): return self.database.transaction()
 
@@ -103,8 +112,11 @@ class SqlEventStore:
         try:
             self.database.execute("INSERT INTO evidence_events (evidence_id, organization_id, project_id, payload) VALUES (?, ?, ?, ?)", (str(event["evidence_id"]), str(event["organization_id"]), str(event["project_id"]), json.dumps(event, sort_keys=True)))
             return True
-        except Exception:
+        except sqlite3.IntegrityError:
             return False
+        except Exception as error:
+            if error.__class__.__name__ == "UniqueViolation": return False
+            raise
 
     def events(self, organization_id: str) -> list[dict[str, object]]:
         return [json.loads(row[0]) for row in self.database.all("SELECT payload FROM evidence_events WHERE organization_id=? ORDER BY observed_at, evidence_id", (organization_id,))]

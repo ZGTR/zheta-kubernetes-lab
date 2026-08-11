@@ -1,5 +1,5 @@
 """View/transport layer plus composition root for injected adapters."""
-import json, os, urllib.request
+import json, os, urllib.parse, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from services.control_plane.adapters import S3ArtifactStore, SqlArtifactStore, SqlProjectRepository
@@ -10,11 +10,21 @@ from services.shared.http import read_json, write_json
 from services.shared.persistence import Database, JsonProjectRepository
 from services.shared.broker import publisher_from_url
 from services.control_plane.outbox import OutboxPublisher
+from services.shared.config import is_cloud, required_secret, required_url
 
 SERVICE_TOKEN = os.environ.get("SERVICE_TOKEN", "")
 JWT_SECRET = os.environ.get("JWT_SECRET", "")
 JWT_ISSUER = os.environ.get("JWT_ISSUER", "zheta-forge")
 JWT_AUDIENCE = os.environ.get("JWT_AUDIENCE", "forge-control-plane")
+required_secret("SERVICE_TOKEN")
+required_secret("JWT_SECRET")
+if is_cloud():
+    required_url("CONTROL_DATABASE_URL", ("postgresql://",))
+    required_url("BROKER_TOPIC", ("arn:aws:sns:",))
+    required_url("GENERATOR_URL", ("http://", "https://"))
+    required_url("RUNTIME_URL", ("http://", "https://"))
+    required_url("EVIDENCE_URL", ("http://", "https://"))
+    if not os.getenv("ARTIFACT_BUCKET"): raise RuntimeError("ARTIFACT_BUCKET is required in cloud environments")
 
 def request_json(method: str, url: str, body: dict[str, object] | None = None) -> dict[str, Any]:
     request = urllib.request.Request(url, data=json.dumps(body).encode() if body is not None else None, method=method, headers={"Content-Type": "application/json", "X-Service-Token": SERVICE_TOKEN})
@@ -40,6 +50,11 @@ class Handler(BaseHTTPRequestHandler):
     def identity(self): return verify_bearer(self.headers.get("Authorization"), JWT_SECRET, JWT_ISSUER, JWT_AUDIENCE)
     def do_GET(self):
         if self.path == "/healthz": write_json(self, 200, {"service": "control-plane"}); return
+        if self.path == "/evidence":
+            try:
+                identity = self.identity(); result = request_json("GET", f"{os.getenv('EVIDENCE_URL', 'http://evidence:8080')}/events?organization_id={urllib.parse.quote(identity.organization_id)}"); write_json(self, 200, result)
+            except PermissionError as error: write_json(self, 401, {"error": str(error)})
+            return
         try: write_json(self, 200, CONTROLLER.get(self.identity(), self.path.removeprefix("/projects/").split("/", 1)[0]))
         except PermissionError as error: write_json(self, 401, {"error": str(error)})
         except KeyError as error: write_json(self, 404, {"error": str(error)})

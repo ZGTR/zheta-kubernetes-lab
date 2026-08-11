@@ -20,10 +20,10 @@ class SqlProjectRepository:
         self.repository.create(project.organization_id, project.project_id, _payload(project))
 
     def save(self, project: Project) -> None:
-        self.repository.save(project.organization_id, project.project_id, _payload(project))
+        project.version = self.repository.save(project.organization_id, project.project_id, _payload(project), project.version)
 
     def tombstone(self, project: Project) -> None:
-        self.repository.tombstone(project.organization_id, project.project_id)
+        self.repository.tombstone(project.organization_id, project.project_id, project.version)
 
     def transaction(self): return self.repository.transaction()
 
