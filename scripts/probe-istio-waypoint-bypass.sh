@@ -90,15 +90,33 @@ probe_started="$(python3 -c 'from datetime import datetime,timezone; print(datet
 set +e
 kubectl --context "$MESH_CONTEXT" -n "$namespace" exec pod/"$SOURCE_POD" -- env TARGET_IP="$target_ip" python -c 'import os,socket,sys
 try:
- socket.create_connection((os.environ["TARGET_IP"],8080),timeout=3)
+ connection=socket.create_connection((os.environ["TARGET_IP"],8080),timeout=3)
+ connection.settimeout(3)
+ connection.sendall(b"GET /healthz HTTP/1.1\r\nHost: generator\r\nConnection: close\r\n\r\n")
+ response=connection.recv(4096)
+ if response:
+  sys.stderr.buffer.write(b"unexpected HTTP response bytes: "+response)
+  raise SystemExit(41)
+ print("transport denied with EOF before any response bytes",file=sys.stderr)
+ raise SystemExit(44)
 except TimeoutError as error:
  print(error,file=sys.stderr); raise SystemExit(42)
+except ConnectionResetError as error:
+ print(error,file=sys.stderr); raise SystemExit(45)
+except BrokenPipeError as error:
+ print(error,file=sys.stderr); raise SystemExit(46)
+except ConnectionAbortedError as error:
+ print(error,file=sys.stderr); raise SystemExit(47)
 except Exception as error:
  print(error,file=sys.stderr); raise SystemExit(43)
-raise SystemExit(0)' 2> "$MESH_EVIDENCE_DIR/denial-stderr.txt"
+' 2> "$MESH_EVIDENCE_DIR/denial-stderr.txt"
 mesh_denial_status=$?
 set -e
-[ "$mesh_denial_status" = 42 ] || { echo "mesh probe inconclusive: expected Istio transport denial status 42, got $mesh_denial_status" >&2; exit 1; }
+case "$mesh_denial_status" in
+  42|44|45|46|47) ;;
+  41) echo 'mesh probe failed open: generator returned HTTP response bytes' >&2; exit 1 ;;
+  *) echo "mesh probe inconclusive: expected timeout/reset/broken-pipe/aborted/zero-byte EOF, got status $mesh_denial_status" >&2; exit 1 ;;
+esac
 
 correlated=0
 for _ in 1 2 3 4 5 6 7 8 9 10; do
