@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+source "$(dirname "$0")/lib.sh"
+base_url="${FORGE_URL:-http://localhost:8080}"
+token="${FORGE_TOKEN:-$(python3 "$REPO_ROOT/scripts/mint-local-token.py")}"; auth_header="Authorization: Bearer $token"
+post() { local extra=(); if [ -n "${3:-}" ]; then extra=(-H "Idempotency-Key: $3"); fi; curl --fail --silent --show-error -H "$auth_header" -H 'Content-Type: application/json' "${extra[@]}" -d "$2" "$base_url$1"; printf '\n'; }
+post /projects '{"project_id":"support","organization_id":"acme","name":"Support operations","archetype":"workflow"}'
+post /projects/support/generate '{}'
+post /projects/support/preview '{}'
+post /projects/support/connectors '{"connector":"crm-reader"}'
+post /projects/support/share '{"collaborator":"reviewer@acme.test"}'
+post /projects/support/revoke '{"collaborator":"reviewer@acme.test"}'
+post /projects/support/publish '{}' smoke-publish-1
+post /projects/support/rollback '{"release_id":"rel-1"}'
+post /projects/support/export '{}'
+post /projects/support/retire '{}'
+curl --fail --silent --show-error -X DELETE -H "$auth_header" "$base_url/projects/support"
+printf '\n'
+for attempt in $(seq 1 30); do
+  evidence_count="$(curl --fail --silent --show-error -H "$auth_header" "$base_url/evidence" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)["events"]))')"
+  [ "$evidence_count" -ge 10 ] && break
+  sleep 1
+done
+[ "$evidence_count" -ge 10 ] || { echo "durable evidence did not catch up" >&2; exit 1; }
+printf 'Zheta Forge lifecycle completed with authenticated durable evidence_events=%s.\n' "$evidence_count"

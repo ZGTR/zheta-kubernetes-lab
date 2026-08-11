@@ -1,6 +1,31 @@
-# Zheta Kubernetes Lab
+# Zheta Forge: from laptop processes to isolated AWS production
 
-Run a real multi-node Kubernetes cluster on one laptop, create it with Terraform, watch Kubernetes repair a deleted pod, stop and restart a simulated machine, then watch Argo CD repair configuration drift from Git.
+Build and operate a general AI application platform through its complete customer lifecycle, first as five local containers, then on a real multi-node Kubernetes cluster, and finally as three isolated AWS account designs for dev, staging, and production.
+
+The central claim is that production readiness comes from explicit ownership boundaries and observable reconciliation loops, not from adding Kubernetes to a single demo page. The original Terraform, Kind, Kubernetes failure, and Argo CD drift lessons remain below; Zheta Forge adds multiple single-responsibility services and an AWS destination without creating billable infrastructure.
+
+## Start with the product on one laptop
+
+```bash
+make product-local   # Build and start the four services plus the visible web page.
+make product-smoke   # Prove create-to-delete behavior through HTTP evidence.
+make product-stop    # Remove only this repository's Compose containers/network.
+```
+
+The smoke run creates a support application, deterministically generates it, previews it, grants machine connector authority, shares and revokes a collaborator, publishes a content-addressed release record, rolls back, exports, retires, and tombstones it. Read [the architecture](docs/architecture.md) for the three authorization planes and [the environment contract](docs/environments.md) for promotion rules.
+
+To run the same service responsibilities on Kind:
+
+```bash
+make up
+make product-deploy
+kubectl -n zheta-forge port-forward service/control-plane 8080:8080
+make product-smoke
+```
+
+AWS declarations live under `infra/stacks/{dev,staging,prod}`. Each stack targets a different AWS account and EKS cluster. They are reviewable IaC only: this repository never supplies credentials or performs an AWS apply automatically.
+
+This is the single public monorepo used by both courses. The local Kind lab remains under `terraform/`, while product services, Kubernetes/GitOps delivery, and isolated AWS stacks deepen the same running system. See [the stable course snippet index](docs/course-snippets.md). Cloud overlays intentionally render zero service replicas. The candidate public promotion workflow is disabled until its third-party actions are immutably pinned and it produces scan, signature, and SBOM evidence. A separate private-runner command proves the exact AWS account, durable secrets, and cluster identity before it enables replicas. Public ingress/TLS/WAF, live PostgreSQL migration proof, restore proof, authenticated cloud product smoke, and any KEDA or Karpenter installation remain explicit launch vetoes rather than implied features.
 
 The most important idea is that there is not one magic “Kubernetes recovery” mechanism. Three independent reconciliation loops own three different kinds of desired state:
 
@@ -238,4 +263,3 @@ make destroy
 5. **Measure:** require Ready nodes, available replicas, `Synced`, `Healthy`, and an HTTP response.
 
 The lab is successful when you can predict which loop reacts before running the failure command.
-

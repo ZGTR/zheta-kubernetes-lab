@@ -1,0 +1,12 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata: { name: forge-dev, namespace: argocd }
+spec:
+  generators: [{ list: { elements: [{ url: "https://kubernetes.default.svc" }] } }]
+  template:
+    metadata: { name: forge-dev }
+    spec:
+      project: forge
+      source: { repoURL: "https://github.com/ZGTR/zheta-kubernetes-lab.git", targetRevision: master, path: gitops/apps/forge/overlays/dev }
+      destination: { server: '{{url}}', namespace: zheta-forge }
+      syncPolicy: { automated: { prune: true, selfHeal: true }, syncOptions: [CreateNamespace=true] }

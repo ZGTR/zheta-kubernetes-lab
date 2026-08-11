@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS evidence_events (evidence_id TEXT PRIMARY KEY, organization_id TEXT NOT NULL, project_id TEXT NOT NULL, payload TEXT NOT NULL, observed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);

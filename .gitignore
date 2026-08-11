@@ -1,5 +1,7 @@
 .DS_Store
 .terraform/
+__pycache__/
+*.py[cod]
 *.tfstate
 *.tfstate.*
 .kube/

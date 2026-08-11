@@ -1,0 +1,19 @@
+name: Promote Zheta Forge (disabled candidate)
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [dev, staging, prod]
+        required: true
+permissions: { contents: read }
+jobs:
+  promotion-disabled:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail closed until supply-chain evidence exists
+        run: |
+          echo 'Promotion is disabled: pin every third-party action to an immutable commit SHA.' >&2
+          echo 'Add source verification, vulnerability scan, image signature, and SBOM evidence before build/push authority is enabled.' >&2
+          echo 'Private-cluster launch and authenticated cloud product smoke remain separate gates.' >&2
+          exit 1

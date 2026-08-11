@@ -1,0 +1,41 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny, namespace: zheta-forge }
+spec: { podSelector: {}, policyTypes: [Ingress, Egress] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: control-plane-paths, namespace: zheta-forge }
+spec:
+  podSelector: { matchLabels: { app.kubernetes.io/name: control-plane } }
+  policyTypes: [Ingress, Egress]
+  ingress: [{ ports: [{ protocol: TCP, port: 8080 }] }]
+  egress:
+    - to: [{ podSelector: { matchExpressions: [{ key: app.kubernetes.io/name, operator: In, values: [generator, runtime, evidence, broker] }] } }]
+      ports: [{ protocol: TCP, port: 8080 }]
+    - to: [{ namespaceSelector: {} }]
+      ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }]
+    - to: [{ ipBlock: { cidr: 10.0.0.0/8 } }]
+      ports: [{ protocol: TCP, port: 443 }, { protocol: TCP, port: 5432 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: internal-services, namespace: zheta-forge }
+spec:
+  podSelector: { matchExpressions: [{ key: app.kubernetes.io/name, operator: In, values: [generator, runtime, evidence] }] }
+  policyTypes: [Ingress, Egress]
+  ingress: [{ from: [{ podSelector: { matchLabels: { app.kubernetes.io/name: control-plane } } }], ports: [{ protocol: TCP, port: 8080 }] }]
+  egress:
+    - { to: [{ namespaceSelector: {} }], ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }] }
+    - { to: [{ ipBlock: { cidr: 10.0.0.0/8 } }], ports: [{ protocol: TCP, port: 443 }, { protocol: TCP, port: 5432 }] }
+    - { to: [{ podSelector: { matchLabels: { app.kubernetes.io/name: broker } } }], ports: [{ protocol: TCP, port: 8080 }] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: broker-publish-subscribe, namespace: zheta-forge }
+spec:
+  podSelector: { matchLabels: { app.kubernetes.io/name: broker } }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ podSelector: { matchExpressions: [{ key: app.kubernetes.io/name, operator: In, values: [control-plane, evidence] }] } }]
+      ports: [{ protocol: TCP, port: 8080 }]
