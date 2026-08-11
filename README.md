@@ -27,6 +27,8 @@ AWS declarations live under `infra/stacks/{dev,staging,prod}`. Each stack target
 
 This is the single public monorepo used by both courses. The local Kind lab remains under `terraform/`, while product services, Kubernetes/GitOps delivery, and isolated AWS stacks deepen the same running system. See [the stable course snippet index](docs/course-snippets.md). Cloud overlays intentionally render zero service replicas. The candidate public promotion workflow is disabled until its third-party actions are immutably pinned and it produces scan, signature, and SBOM evidence. A separate private-runner command proves the exact AWS account, durable secrets, and cluster identity before it enables replicas. Public ingress/TLS/WAF, live PostgreSQL migration proof, restore proof, authenticated cloud product smoke, and any KEDA or Karpenter installation remain explicit launch vetoes rather than implied features.
 
+The optional [Istio Ambient Mesh boundary](docs/istio-ambient.md) adds source-only namespace enrollment, ztunnel mTLS/L4 policy, a destination waypoint, L7 authorization, and NetworkPolicy compatibility. It is not included by any cloud overlay and does not claim an AWS deployment.
+
 The most important idea is that there is not one magic “Kubernetes recovery” mechanism. Three independent reconciliation loops own three different kinds of desired state:
 
 ```mermaid

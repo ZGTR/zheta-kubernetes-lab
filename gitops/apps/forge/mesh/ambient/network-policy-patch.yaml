@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: control-plane-paths
+  namespace: zheta-forge
+spec:
+  ingress:
+    - ports: [{ protocol: TCP, port: 8080 }]
+    - ports: [{ protocol: TCP, port: 15008 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: internal-services
+  namespace: zheta-forge
+spec:
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app.kubernetes.io/name: control-plane } } }]
+      ports: [{ protocol: TCP, port: 8080 }]
+    - ports: [{ protocol: TCP, port: 15008 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: broker-publish-subscribe
+  namespace: zheta-forge
+spec:
+  ingress:
+    - from: [{ podSelector: { matchExpressions: [{ key: app.kubernetes.io/name, operator: In, values: [control-plane, evidence] }] } }]
+      ports: [{ protocol: TCP, port: 8080 }]
+    - ports: [{ protocol: TCP, port: 15008 }]

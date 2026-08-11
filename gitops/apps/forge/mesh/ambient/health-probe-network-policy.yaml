@@ -1,0 +1,14 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ambient-kubelet-health-probes
+  namespace: zheta-forge
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: zheta-forge
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - ipBlock: { cidr: 169.254.7.127/32 }
+        - ipBlock: { cidr: "fd16:9254:7127:1337:ffff:ffff:ffff:ffff/128" }

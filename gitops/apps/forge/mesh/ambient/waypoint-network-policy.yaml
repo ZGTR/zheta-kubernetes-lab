@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: forge-waypoint
+  namespace: zheta-forge
+spec:
+  podSelector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: forge-waypoint
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - ports: [{ protocol: TCP, port: 15008 }]
+    - from:
+        - ipBlock: { cidr: 169.254.7.127/32 }
+        - ipBlock: { cidr: "fd16:9254:7127:1337:ffff:ffff:ffff:ffff/128" }
+  egress:
+    - to: [{ namespaceSelector: {} }]
+      ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }]
+    - ports: [{ protocol: TCP, port: 15008 }, { protocol: TCP, port: 15012 }, { protocol: TCP, port: 15014 }]

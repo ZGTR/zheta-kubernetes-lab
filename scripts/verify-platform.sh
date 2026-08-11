@@ -8,6 +8,7 @@ terraform_version="$($terraform_bin version -json | ruby -rjson -e 'puts JSON.pa
 ruby -e 'exit Gem::Version.new(ARGV[0]) >= Gem::Version.new("1.10.0") ? 0 : 1' "$terraform_version" || { echo "Terraform >=1.10.0 required for locked S3 state and AWS validation; found $terraform_version" >&2; exit 1; }
 python3 -m compileall -q "$REPO_ROOT/services"
 python3 -m unittest discover -s "$REPO_ROOT/tests" -v
+"$REPO_ROOT/scripts/verify-ambient-source.sh"
 "$terraform_bin" -chdir="$REPO_ROOT/infra" fmt -check -recursive
 for stack in dev staging prod; do
   test -f "$REPO_ROOT/infra/stacks/$stack/.terraform.lock.hcl"
