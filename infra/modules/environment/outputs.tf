@@ -24,3 +24,9 @@ output "application_database_endpoint" {
   value     = aws_rds_cluster.application.endpoint
   sensitive = true
 }
+output "backup_plan_id" {
+  value = aws_backup_plan.platform.id
+}
+output "connector_endpoint_ids" {
+  value = { for name, endpoint in aws_vpc_endpoint.enterprise_connector : name => endpoint.id }
+}

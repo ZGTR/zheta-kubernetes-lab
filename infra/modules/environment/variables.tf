@@ -25,3 +25,8 @@ variable "node_max_size" {
 variable "deletion_protection" {
   type = bool
 }
+variable "connector_service_names" {
+  description = "Approved AWS PrivateLink service names keyed by connector ID. Empty means no private enterprise connector is authorized."
+  type        = map(string)
+  default     = {}
+}

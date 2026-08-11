@@ -100,6 +100,45 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private[count.index].id
 }
 
+resource "aws_security_group" "endpoints" {
+  name   = "${local.name}-endpoints"
+  vpc_id = aws_vpc.this.id
+  ingress {
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    security_groups = [aws_eks_cluster.this.vpc_config[0].cluster_security_group_id]
+  }
+  tags = local.tags
+}
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = aws_vpc.this.id
+  service_name      = "com.amazonaws.${var.region}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = aws_route_table.private[*].id
+  tags              = local.tags
+}
+resource "aws_vpc_endpoint" "aws_services" {
+  for_each            = toset(["ecr.api", "ecr.dkr", "kms", "sqs", "sts"])
+  vpc_id              = aws_vpc.this.id
+  service_name        = "com.amazonaws.${var.region}.${each.value}"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = aws_subnet.private[*].id
+  security_group_ids  = [aws_security_group.endpoints.id]
+  private_dns_enabled = true
+  tags                = local.tags
+}
+resource "aws_vpc_endpoint" "enterprise_connector" {
+  for_each            = var.connector_service_names
+  vpc_id              = aws_vpc.this.id
+  service_name        = each.value
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = aws_subnet.private[*].id
+  security_group_ids  = [aws_security_group.endpoints.id]
+  private_dns_enabled = false
+  tags                = merge(local.tags, { Connector = each.key })
+}
+
 resource "aws_iam_role" "cluster" {
   name = "${local.name}-cluster"
   assume_role_policy = jsonencode({
@@ -344,4 +383,44 @@ resource "aws_rds_cluster_instance" "application" {
   instance_class     = "db.serverless"
   engine             = aws_rds_cluster.application.engine
   tags               = local.tags
+}
+
+resource "aws_backup_vault" "platform" {
+  name        = local.name
+  kms_key_arn = aws_kms_key.data.arn
+  tags        = local.tags
+}
+resource "aws_iam_role" "backup" {
+  name = "${local.name}-backup"
+  assume_role_policy = jsonencode({
+    Version   = "2012-10-17"
+    Statement = [{ Effect = "Allow", Principal = { Service = "backup.amazonaws.com" }, Action = "sts:AssumeRole" }]
+  })
+  tags = local.tags
+}
+resource "aws_iam_role_policy_attachment" "backup" {
+  role       = aws_iam_role.backup.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup"
+}
+resource "aws_iam_role_policy_attachment" "backup_s3" {
+  role       = aws_iam_role.backup.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSBackupServiceRolePolicyForS3Backup"
+}
+resource "aws_backup_plan" "platform" {
+  name = local.name
+  rule {
+    rule_name         = "daily"
+    target_vault_name = aws_backup_vault.platform.name
+    schedule          = "cron(0 3 * * ? *)"
+    lifecycle {
+      delete_after = var.environment == "prod" ? 35 : 7
+    }
+  }
+  tags = local.tags
+}
+resource "aws_backup_selection" "platform" {
+  name         = local.name
+  iam_role_arn = aws_iam_role.backup.arn
+  plan_id      = aws_backup_plan.platform.id
+  resources    = [aws_rds_cluster.control.arn, aws_rds_cluster.application.arn, aws_s3_bucket.artifacts.arn]
 }
