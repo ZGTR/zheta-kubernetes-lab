@@ -15,8 +15,12 @@ require_mesh_approval() {
   [ "${!variable:-0}" = 1 ] || { echo "mesh veto: set $variable=1 after reviewing the target context" >&2; exit 1; }
 }
 
-verify_mesh_product_policy() {
+verify_mesh_l4_policy() {
   kubectl --context "$MESH_CONTEXT" -n zheta-forge exec deployment/control-plane -- python -c 'import json,os,urllib.request; request=urllib.request.Request("http://generator:8080/generate", data=json.dumps({"name":"mesh-policy-proof","archetype":"workflow"}).encode(), method="POST", headers={"Content-Type":"application/json","X-Service-Token":os.environ["SERVICE_TOKEN"]}); result=json.load(urllib.request.urlopen(request, timeout=5)); assert result["artifact_id"].startswith("sha256:")'
+}
+
+verify_mesh_l7_policy() {
+  verify_mesh_l4_policy
   kubectl --context "$MESH_CONTEXT" -n zheta-forge exec deployment/control-plane -- python -c 'import urllib.error,urllib.request
 try:
  urllib.request.urlopen("http://generator:8080/generate", timeout=5)
@@ -24,3 +28,5 @@ try:
 except urllib.error.HTTPError as error:
  assert error.code == 403, error.code'
 }
+
+verify_mesh_product_policy() { verify_mesh_l7_policy; }

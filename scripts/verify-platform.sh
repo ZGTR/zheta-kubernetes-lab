@@ -9,6 +9,11 @@ ruby -e 'exit Gem::Version.new(ARGV[0]) >= Gem::Version.new("1.10.0") ? 0 : 1' "
 python3 -m compileall -q "$REPO_ROOT/services"
 python3 -m unittest discover -s "$REPO_ROOT/tests" -v
 "$REPO_ROOT/scripts/verify-ambient-source.sh"
+source "$REPO_ROOT/platform/kind/versions.env"
+[ "$KIND_VERSION" = v0.32.0 ]
+[[ "$KIND_NODE_IMAGE" =~ ^kindest/node:v[0-9.]+@sha256:[0-9a-f]{64}$ ]]
+grep -q "default     = \"$KIND_NODE_IMAGE\"" "$REPO_ROOT/terraform/variables.tf"
+grep -q 'KINDNET_IMAGE=docker.io/kindest/kindnetd:' "$REPO_ROOT/platform/kind/versions.env"
 "$terraform_bin" -chdir="$REPO_ROOT/infra" fmt -check -recursive
 for stack in dev staging prod; do
   test -f "$REPO_ROOT/infra/stacks/$stack/.terraform.lock.hcl"
@@ -33,9 +38,9 @@ for environment in dev staging prod; do
     "$REPO_ROOT/scripts/verify-release.sh" "$environment"
   fi
 done
-for overlay in local dev staging prod; do kubectl kustomize "$REPO_ROOT/gitops/apps/forge/overlays/$overlay" >/dev/null; done
+for overlay in local dev staging prod ambient-enrollment-local ambient-l4-local ambient-local; do kubectl kustomize "$REPO_ROOT/gitops/apps/forge/overlays/$overlay" >/dev/null; done
 for manifest in "$REPO_ROOT/argocd/project.yaml" "$REPO_ROOT"/argocd/applicationsets/*.yaml; do
   ruby -e 'require "yaml"; YAML.load_stream(File.read(ARGV.fetch(0)))' "$manifest"
 done
 if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then docker compose -f "$REPO_ROOT/compose.yaml" config >/dev/null; fi
-echo "Service tests, four overlays, Argo CD YAML, and Compose contract passed."
+echo "Service tests, seven overlays, Argo CD YAML, and Compose contract passed."

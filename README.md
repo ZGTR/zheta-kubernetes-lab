@@ -54,7 +54,7 @@ flowchart LR
   docker --> evidence
 ```
 
-The [`tehcyx/kind`](https://github.com/tehcyx/terraform-provider-kind) provider is pinned to `0.11.0`. Its cluster resource creates and deletes Kind clusters but does not modify an existing cluster in place, so node-count changes are replacement-oriented rather than a production scaling model.
+The [`tehcyx/kind`](https://github.com/tehcyx/terraform-provider-kind) provider is pinned to `0.11.0`. Its cluster resource creates and deletes Kind clusters but does not modify an existing cluster in place, so node-count changes are replacement-oriented rather than a production scaling model. The node image is also digest-pinned to Kind's Kubernetes 1.35.5 image. Kind v0.32.0's bundled kindnet image includes Kubernetes NetworkPolicy enforcement; `make up` rejects a different Kind or kindnet version, and `make cni-probe` supplies the separate live positive/negative packet proof.
 
 After the cluster exists, Kubernetes and Argo CD add their own loops without replacing Terraform:
 

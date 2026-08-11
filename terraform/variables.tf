@@ -20,3 +20,13 @@ variable "worker_count" {
   }
 }
 
+variable "kind_node_image" {
+  description = "Official Kind node image pin whose bundled kindnet enforces NetworkPolicy."
+  type        = string
+  default     = "kindest/node:v1.35.5@sha256:ce977ae6d65918d0b58a5f8b5e940429c2ce42fa3a5619ec2bbc60b949c0ac95"
+
+  validation {
+    condition     = can(regex("^kindest/node:v[0-9]+\\.[0-9]+\\.[0-9]+@sha256:[0-9a-f]{64}$", var.kind_node_image))
+    error_message = "kind_node_image must be an immutable official Kind node digest."
+  }
+}

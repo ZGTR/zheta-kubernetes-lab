@@ -4,6 +4,7 @@ locals {
 
 resource "kind_cluster" "zheta" {
   name            = var.cluster_name
+  node_image      = var.kind_node_image
   wait_for_ready  = true
   kubeconfig_path = local.kubeconfig_path
 
@@ -24,4 +25,3 @@ resource "kind_cluster" "zheta" {
     }
   }
 }
-

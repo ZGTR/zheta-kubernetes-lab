@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-bounded-bypass-observation-egress, namespace: zheta-forge }
+spec:
+  podSelector: { matchLabels: { app.kubernetes.io/name: evidence } }
+  policyTypes: [Egress]
+  egress:
+    - to: [{ podSelector: { matchLabels: { app.kubernetes.io/name: generator } } }]
+      ports: [{ protocol: TCP, port: 8080 }, { protocol: TCP, port: 15008 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-bounded-bypass-observation-ingress, namespace: zheta-forge }
+spec:
+  podSelector: { matchLabels: { app.kubernetes.io/name: generator } }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ podSelector: { matchLabels: { app.kubernetes.io/name: evidence } } }]
+      ports: [{ protocol: TCP, port: 8080 }, { protocol: TCP, port: 15008 }]

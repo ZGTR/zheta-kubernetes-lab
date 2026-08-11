@@ -3,5 +3,4 @@ kind: Namespace
 metadata:
   name: zheta-forge
   labels:
-    istio.io/dataplane-mode: ambient
     istio.io/use-waypoint: forge-waypoint

@@ -22,14 +22,26 @@ class AmbientMeshSourceTest(unittest.TestCase):
 
     def test_customer_ingress_is_an_explicit_veto(self):
         root = Path(__file__).resolve().parents[1]
-        policy = (root / "gitops/apps/forge/mesh/ambient/l4-authorization.yaml").read_text()
+        policy = (root / "gitops/apps/forge/mesh/ambient-l7/l4-waypoint-patch.yaml").read_text()
         documentation = (root / "docs/istio-ambient.md").read_text()
         self.assertIn("sa/forge-waypoint", policy)
         self.assertIn("Customer ingress remains blocked", documentation)
-        self.assertIn("169.254.7.127/32", (root / "gitops/apps/forge/mesh/ambient/health-probe-network-policy.yaml").read_text())
-        self.assertIn("fd16:9254:7127:1337:ffff:ffff:ffff:ffff/128", (root / "gitops/apps/forge/mesh/ambient/health-probe-network-policy.yaml").read_text())
-        network_patch = (root / "gitops/apps/forge/mesh/ambient/network-policy-patch.yaml").read_text()
+        self.assertIn("169.254.7.127/32", (root / "gitops/apps/forge/mesh/ambient-enrollment/health-probe-network-policy.yaml").read_text())
+        self.assertIn("fd16:9254:7127:1337:ffff:ffff:ffff:ffff/128", (root / "gitops/apps/forge/mesh/ambient-enrollment/health-probe-network-policy.yaml").read_text())
+        network_patch = (root / "gitops/apps/forge/mesh/ambient-enrollment/network-policy-patch.yaml").read_text()
         self.assertEqual(3, network_patch.count("- ports: [{ protocol: TCP, port: 15008 }]"))
+
+    def test_progressive_overlays_do_not_teach_l7_early(self):
+        root = Path(__file__).resolve().parents[1]
+        enrollment = (root / "gitops/apps/forge/overlays/ambient-enrollment-local/kustomization.yaml").read_text()
+        l4 = (root / "gitops/apps/forge/overlays/ambient-l4-local/kustomization.yaml").read_text()
+        final = (root / "gitops/apps/forge/overlays/ambient-local/kustomization.yaml").read_text()
+        self.assertIn("mesh/ambient-enrollment", enrollment)
+        self.assertNotIn("ambient-l4", enrollment)
+        self.assertNotIn("ambient-l7", enrollment)
+        self.assertIn("mesh/ambient-l4", l4)
+        self.assertNotIn("ambient-l7", l4)
+        self.assertIn("mesh/ambient-l7", final)
 
     def test_failure_and_rollback_require_exact_authority(self):
         root = Path(__file__).resolve().parents[1]
@@ -49,18 +61,20 @@ class AmbientMeshSourceTest(unittest.TestCase):
     def test_waypoint_bypass_probe_is_bounded_live_evidence(self):
         root = Path(__file__).resolve().parents[1]
         probe = (root / "scripts/probe-istio-waypoint-bypass.sh").read_text()
-        manifest = (root / "gitops/apps/forge/mesh/ambient/bypass-observation-network-policy.yaml").read_text()
+        manifest = (root / "gitops/apps/forge/mesh/ambient-l4/bypass-observation-network-policy.yaml").read_text()
         documentation = (root / "docs/istio-ambient.md").read_text()
         self.assertIn("MESH_BYPASS_PROBE_APPROVED", probe)
         self.assertIn("SOURCE_POD_UID", probe)
         self.assertIn("TARGET_POD_UID", probe)
         self.assertIn("MESH_EVIDENCE_DIR", probe)
-        self.assertIn("verify_mesh_product_policy", probe)
+        self.assertIn("verify_mesh_l4_policy", probe)
+        self.assertIn("verify_mesh_l7_policy", probe)
         self.assertIn("supports only the local overlay", probe)
         self.assertIn("ztunnel-observation.log", probe)
         self.assertIn("ztunnel_uid", probe)
-        self.assertIn("destination ztunnel emitted no observation", probe)
+        self.assertIn("target-IP/source-identity/policy-denial", probe)
         self.assertIn("allow-bounded-bypass-observation", manifest)
+        self.assertIn("NETWORK_DENY_SOURCE_POD_UID", probe)
         self.assertIn("port: 8080", manifest)
         self.assertIn("port: 15008", manifest)
         self.assertIn("Live probe, not static proof", documentation)

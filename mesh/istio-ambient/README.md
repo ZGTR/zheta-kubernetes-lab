@@ -4,4 +4,4 @@ This directory pins the cluster-level prerequisites for the optional Zheta Forge
 
 The platform team owns `istio-base`, `istiod`, `istio-cni`, `ztunnel`, their upgrades, and cluster-scoped Gateway API resources. The Forge team owns namespace enrollment, its waypoint, destination policies, and application NetworkPolicies. Neither authority installs or launches the other implicitly.
 
-The public repository is source only. No AWS or EKS installation is asserted. Read `docs/istio-ambient.md` before running the bounded scripts.
+The public repository is source only. No AWS or EKS installation is asserted. Application-owned mesh resources are split into `ambient-enrollment`, `ambient-l4`, and `ambient-l7` components so each enforcement layer can be rendered and verified before adding the next. Read `docs/istio-ambient.md` before running the bounded scripts.
