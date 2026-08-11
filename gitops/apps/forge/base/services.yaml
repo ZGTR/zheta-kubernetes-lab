@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata: { name: control-plane, namespace: zheta-forge }
+spec: { selector: { app.kubernetes.io/name: control-plane }, ports: [{ name: http, port: 8080, targetPort: http }] }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: generator, namespace: zheta-forge }
+spec: { selector: { app.kubernetes.io/name: generator }, ports: [{ name: http, port: 8080, targetPort: http }] }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: runtime, namespace: zheta-forge }
+spec: { selector: { app.kubernetes.io/name: runtime }, ports: [{ name: http, port: 8080, targetPort: http }] }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: evidence, namespace: zheta-forge }
+spec: { selector: { app.kubernetes.io/name: evidence }, ports: [{ name: http, port: 8080, targetPort: http }] }

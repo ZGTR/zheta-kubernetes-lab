@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny, namespace: zheta-forge }
+spec: { podSelector: {}, policyTypes: [Ingress, Egress] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: control-plane-paths, namespace: zheta-forge }
+spec:
+  podSelector: { matchLabels: { app.kubernetes.io/name: control-plane } }
+  policyTypes: [Ingress, Egress]
+  ingress: [{ ports: [{ protocol: TCP, port: 8080 }] }]
+  egress:
+    - to: [{ podSelector: { matchExpressions: [{ key: app.kubernetes.io/name, operator: In, values: [generator, runtime, evidence] }] } }]
+      ports: [{ protocol: TCP, port: 8080 }]
+    - to: [{ namespaceSelector: {} }]
+      ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: internal-services, namespace: zheta-forge }
+spec:
+  podSelector: { matchExpressions: [{ key: app.kubernetes.io/name, operator: In, values: [generator, runtime, evidence] }] }
+  policyTypes: [Ingress, Egress]
+  ingress: [{ from: [{ podSelector: { matchLabels: { app.kubernetes.io/name: control-plane } } }], ports: [{ protocol: TCP, port: 8080 }] }]
+  egress: [{ to: [{ namespaceSelector: {} }], ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }] }]

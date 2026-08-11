@@ -1,0 +1,4 @@
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: forge-environment, namespace: zheta-forge }
+data: { ENVIRONMENT: base, GENERATOR_URL: "http://generator:8080", RUNTIME_URL: "http://runtime:8080", EVIDENCE_URL: "http://evidence:8080" }

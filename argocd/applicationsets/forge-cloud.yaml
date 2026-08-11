@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata: { name: forge-cloud, namespace: argocd }
+spec:
+  goTemplate: true
+  generators:
+    - clusters:
+        selector:
+          matchExpressions: [{ key: zheta.io/environment, operator: In, values: [dev, staging, prod] }]
+        values: { environment: '{{ index .metadata.labels "zheta.io/environment" }}' }
+  template:
+    metadata: { name: 'forge-{{ .values.environment }}' }
+    spec:
+      project: forge
+      source: { repoURL: "https://github.com/ZGTR/zheta-kubernetes-lab.git", targetRevision: master, path: 'gitops/apps/forge/overlays/{{ .values.environment }}' }
+      destination: { server: '{{ .server }}', namespace: zheta-forge }
+      syncPolicy: { automated: { prune: true, selfHeal: true }, syncOptions: [CreateNamespace=true] }
