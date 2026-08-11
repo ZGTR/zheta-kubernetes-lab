@@ -1,0 +1,42 @@
+name: Build, push, and pin Zheta Forge
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [dev, staging, prod]
+        required: true
+permissions: { contents: write, id-token: write }
+jobs:
+  promote:
+    environment: ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Build, push, and capture registry digests
+        env: { ENVIRONMENT: "${{ inputs.environment }}" }
+        run: |
+          set -euo pipefail
+          account_id="$(aws sts get-caller-identity --query Account --output text)"
+          registry="$account_id.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com"
+          aws ecr get-login-password | docker login --username AWS --password-stdin "$registry"
+          digests=()
+          for pair in control-plane:control_plane generator:generator runtime:runtime evidence:evidence; do
+            name="${pair%%:*}"; module="${pair##*:}"; metadata="$(mktemp)"
+            docker buildx build --push --build-arg "SERVICE=$module" -f services/Dockerfile -t "$registry/zheta-forge/$name:${GITHUB_SHA}" --metadata-file "$metadata" .
+            digests+=("$(jq -r '."containerimage.digest"' "$metadata")")
+          done
+          python3 scripts/promote-release.py "$ENVIRONMENT" "$registry" "${digests[@]}"
+          aws eks update-kubeconfig --name "zheta-forge-$ENVIRONMENT"
+          ./scripts/verify-release.sh "$ENVIRONMENT"
+      - name: Commit the immutable promotion
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add "gitops/apps/forge/overlays/${{ inputs.environment }}/kustomization.yaml"
+          git commit -m "deploy(forge): pin ${{ inputs.environment }} images from ${GITHUB_SHA}"
+          git push

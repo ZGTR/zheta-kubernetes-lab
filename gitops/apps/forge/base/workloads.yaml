@@ -14,11 +14,15 @@ apiVersion: v1
 kind: ServiceAccount
 metadata: { name: evidence, namespace: zheta-forge }
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: broker, namespace: zheta-forge }
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata: { name: control-plane, namespace: zheta-forge }
 spec:
-  replicas: 2
+  replicas: 0
   selector: { matchLabels: { app.kubernetes.io/name: control-plane } }
   template:
     metadata: { labels: { app.kubernetes.io/name: control-plane, app.kubernetes.io/part-of: zheta-forge } }
@@ -28,18 +32,42 @@ spec:
       containers:
         - name: control-plane
           image: zheta-forge/control-plane:v1
-          envFrom: [{ configMapRef: { name: forge-environment } }]
+          envFrom: [{ configMapRef: { name: forge-environment } }, { secretRef: { name: control-plane-secrets } }]
           ports: [{ name: http, containerPort: 8080 }]
           readinessProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 5 }
           livenessProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 10 }
           resources: { requests: { cpu: 50m, memory: 64Mi }, limits: { cpu: 500m, memory: 256Mi } }
           securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] }, readOnlyRootFilesystem: true }
+          volumeMounts: [{ name: data, mountPath: /data }]
+      volumes: [{ name: data, emptyDir: {} }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: broker, namespace: zheta-forge }
+spec:
+  replicas: 0
+  selector: { matchLabels: { app.kubernetes.io/name: broker } }
+  template:
+    metadata: { labels: { app.kubernetes.io/name: broker, app.kubernetes.io/part-of: zheta-forge } }
+    spec:
+      serviceAccountName: broker
+      securityContext: { runAsNonRoot: true, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: broker
+          image: zheta-forge/broker:v1
+          envFrom: [{ secretRef: { name: broker-secrets } }]
+          ports: [{ name: http, containerPort: 8080 }]
+          readinessProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 5 }
+          resources: { requests: { cpu: 25m, memory: 32Mi }, limits: { cpu: 250m, memory: 128Mi } }
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] }, readOnlyRootFilesystem: true }
+          volumeMounts: [{ name: data, mountPath: /data }]
+      volumes: [{ name: data, emptyDir: {} }]
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata: { name: generator, namespace: zheta-forge }
 spec:
-  replicas: 2
+  replicas: 0
   selector: { matchLabels: { app.kubernetes.io/name: generator } }
   template:
     metadata: { labels: { app.kubernetes.io/name: generator, app.kubernetes.io/part-of: zheta-forge } }
@@ -49,6 +77,7 @@ spec:
       containers:
         - name: generator
           image: zheta-forge/generator:v1
+          envFrom: [{ configMapRef: { name: forge-environment } }, { secretRef: { name: generator-secrets } }]
           ports: [{ name: http, containerPort: 8080 }]
           readinessProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 5 }
           resources: { requests: { cpu: 50m, memory: 64Mi }, limits: { cpu: "1", memory: 512Mi } }
@@ -58,7 +87,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata: { name: runtime, namespace: zheta-forge }
 spec:
-  replicas: 2
+  replicas: 0
   selector: { matchLabels: { app.kubernetes.io/name: runtime } }
   template:
     metadata: { labels: { app.kubernetes.io/name: runtime, app.kubernetes.io/part-of: zheta-forge } }
@@ -68,16 +97,19 @@ spec:
       containers:
         - name: runtime
           image: zheta-forge/runtime:v1
+          envFrom: [{ secretRef: { name: runtime-secrets } }]
           ports: [{ name: http, containerPort: 8080 }]
           readinessProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 5 }
           resources: { requests: { cpu: 50m, memory: 64Mi }, limits: { cpu: 500m, memory: 256Mi } }
           securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] }, readOnlyRootFilesystem: true }
+          volumeMounts: [{ name: data, mountPath: /data }]
+      volumes: [{ name: data, emptyDir: {} }]
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata: { name: evidence, namespace: zheta-forge }
 spec:
-  replicas: 2
+  replicas: 0
   selector: { matchLabels: { app.kubernetes.io/name: evidence } }
   template:
     metadata: { labels: { app.kubernetes.io/name: evidence, app.kubernetes.io/part-of: zheta-forge } }
@@ -87,7 +119,10 @@ spec:
       containers:
         - name: evidence
           image: zheta-forge/evidence:v1
+          envFrom: [{ secretRef: { name: evidence-secrets } }]
           ports: [{ name: http, containerPort: 8080 }]
           readinessProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 5 }
           resources: { requests: { cpu: 25m, memory: 32Mi }, limits: { cpu: 250m, memory: 128Mi } }
           securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] }, readOnlyRootFilesystem: true }
+          volumeMounts: [{ name: data, mountPath: /data }]
+      volumes: [{ name: data, emptyDir: {} }]

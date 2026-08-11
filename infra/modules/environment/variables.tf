@@ -4,6 +4,8 @@ variable "environment" {
 variable "expected_account_id" {
   type = string
 }
+variable "deployer_role_arn" { type = string }
+variable "monthly_budget_usd" { type = number }
 variable "region" {
   type = string
 }

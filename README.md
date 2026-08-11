@@ -25,6 +25,8 @@ make product-smoke
 
 AWS declarations live under `infra/stacks/{dev,staging,prod}`. Each stack targets a different AWS account and EKS cluster. They are reviewable IaC only: this repository never supplies credentials or performs an AWS apply automatically.
 
+This is the single public monorepo used by both courses. The local Kind lab remains under `terraform/`, while product services, Kubernetes/GitOps delivery, and isolated AWS stacks deepen the same running system. See [the stable course snippet index](docs/course-snippets.md). Cloud overlays intentionally render zero service replicas and carry `blocked-unpinned` until the authenticated promotion workflow pins four real ECR digests and proves durable runtime secrets exist in the target private cluster. Until that gate passes, the cloud path is not production-ready and Argo CD cannot start the product.
+
 The most important idea is that there is not one magic “Kubernetes recovery” mechanism. Three independent reconciliation loops own three different kinds of desired state:
 
 ```mermaid

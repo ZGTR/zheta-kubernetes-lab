@@ -1,0 +1,33 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: control-plane, namespace: zheta-forge }
+spec: { minAvailable: 2, selector: { matchLabels: { app.kubernetes.io/name: control-plane } } }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: control-plane, namespace: zheta-forge }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: control-plane }
+  minReplicas: 3
+  maxReplicas: 20
+  behavior: { scaleDown: { stabilizationWindowSeconds: 600 } }
+  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 60 } } }]
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata: { name: generator-aws, namespace: zheta-forge }
+spec: { podIdentity: { provider: aws } }
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata: { name: generator, namespace: zheta-forge }
+spec:
+  scaleTargetRef: { name: generator, envSourceContainerName: generator }
+  minReplicaCount: 3
+  maxReplicaCount: 50
+  pollingInterval: 15
+  cooldownPeriod: 300
+  triggers:
+    - type: aws-sqs-queue
+      metadata: { queueURLFromEnv: GENERATION_QUEUE_URL, awsRegionFromEnv: AWS_REGION, queueLength: "5" }
+      authenticationRef: { name: generator-aws }

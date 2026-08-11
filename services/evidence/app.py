@@ -1,17 +1,31 @@
-import hashlib, json, os, time
+import os, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from services.shared.http import read_json, write_json
-EVENTS: list[dict[str, object]] = []
+from services.shared.auth import require_service_token
+from services.shared.broker import subscriber_from_url
+from services.shared.http import write_json
+from services.shared.persistence import Database, SqlEventStore
+
+SERVICE_TOKEN = os.getenv("SERVICE_TOKEN", "")
+STORE = SqlEventStore(Database(os.getenv("EVIDENCE_DATABASE_URL", "sqlite:///.lab/evidence.db")))
+BROKER = subscriber_from_url(os.getenv("BROKER_SUBSCRIPTION", "http://broker:8080"), SERVICE_TOKEN)
+
+def subscribe() -> None:
+    while True:
+        try:
+            for receipt, event in BROKER.receive("evidence"):
+                event["evidence_id"] = event.get("evidence_id") or __import__("hashlib").sha256(__import__("json").dumps(event, sort_keys=True).encode()).hexdigest()
+                STORE.append(event)
+                BROKER.acknowledge("evidence", receipt)
+        except Exception: time.sleep(2)
 
 class Handler(BaseHTTPRequestHandler):
-    def do_GET(self) -> None:
-        if self.path == "/healthz": write_json(self, 200, {"service": "evidence"})
-        elif self.path == "/events": write_json(self, 200, {"events": EVENTS})
-        else: write_json(self, 404, {"error": "not found"})
-    def do_POST(self) -> None:
-        if self.path != "/events": write_json(self, 404, {"error": "not found"}); return
-        event = read_json(self); event["observed_at"] = int(time.time()); event["evidence_id"] = hashlib.sha256(json.dumps(event, sort_keys=True).encode()).hexdigest(); EVENTS.append(event); write_json(self, 201, event)
+    def do_GET(self):
+        if self.path == "/healthz": write_json(self, 200, {"service": "evidence"}); return
+        try:
+            require_service_token(self.headers.get("X-Service-Token"), SERVICE_TOKEN); organization_id = self.path.removeprefix("/events?organization_id="); write_json(self, 200, {"events": STORE.events(organization_id)})
+        except PermissionError as error: write_json(self, 401, {"error": str(error)})
     def log_message(self, format: str, *args: object) -> None: return
 
 if __name__ == "__main__":
+    threading.Thread(target=subscribe, daemon=True).start()
     ThreadingHTTPServer(("0.0.0.0", int(os.getenv("PORT", "8080"))), Handler).serve_forever()

@@ -3,7 +3,7 @@ kind: AppProject
 metadata: { name: forge, namespace: argocd }
 spec:
   description: Zheta Forge workloads in registered isolated environment clusters.
-  sourceRepos: ["https://github.com/ZGTR/zheta-kubernetes-lab.git"]
+  sourceRepos: ["https://github.com/ZGTR/zheta-kubernetes-lab.git", "https://kedacore.github.io/charts", "oci://public.ecr.aws/karpenter"]
   destinations: [{ namespace: zheta-forge, server: '*' }]
   clusterResourceWhitelist: [{ group: '', kind: Namespace }]
   namespaceResourceWhitelist: [{ group: '*', kind: '*' }]

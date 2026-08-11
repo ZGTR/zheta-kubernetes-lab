@@ -3,6 +3,7 @@ ARG SERVICE
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 SERVICE_NAME=${SERVICE}
 WORKDIR /workspace
 COPY services /workspace/services
+RUN pip install --no-cache-dir -r /workspace/services/requirements.txt
 USER 65532:65532
 EXPOSE 8080
 CMD ["sh", "-c", "python -m services.${SERVICE_NAME}.app"]

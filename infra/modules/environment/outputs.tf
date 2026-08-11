@@ -16,12 +16,19 @@ output "repository_urls" {
 output "generation_queue_url" {
   value = aws_sqs_queue.generation.url
 }
+output "event_topic_arn" { value = aws_sns_topic.events.arn }
+output "evidence_queue_url" { value = aws_sqs_queue.evidence.url }
+output "operations_queue_url" { value = aws_sqs_queue.operations.url }
 output "control_database_endpoint" {
   value     = aws_rds_cluster.control.endpoint
   sensitive = true
 }
 output "application_database_endpoint" {
   value     = aws_rds_cluster.application.endpoint
+  sensitive = true
+}
+output "evidence_database_endpoint" {
+  value     = aws_rds_cluster.evidence.endpoint
   sensitive = true
 }
 output "backup_plan_id" {

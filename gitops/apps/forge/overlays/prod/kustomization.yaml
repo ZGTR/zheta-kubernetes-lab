@@ -1,14 +1,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources: [../../base]
-patches:
-  - target: { kind: Deployment }
-    patch: |-
-      - { op: replace, path: /spec/replicas, value: 3 }
+commonAnnotations: { zheta.io/release-state: blocked-unpinned }
 configMapGenerator:
   - { name: forge-environment, namespace: zheta-forge, behavior: merge, literals: [ENVIRONMENT=prod] }
-images:
-  - { name: zheta-forge/control-plane, newName: registry.example.com/zheta-forge/control-plane, digest: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }
-  - { name: zheta-forge/generator, newName: registry.example.com/zheta-forge/generator, digest: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }
-  - { name: zheta-forge/runtime, newName: registry.example.com/zheta-forge/runtime, digest: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }
-  - { name: zheta-forge/evidence, newName: registry.example.com/zheta-forge/evidence, digest: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }

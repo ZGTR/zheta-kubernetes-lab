@@ -24,6 +24,12 @@ resource "aws_kms_key" "data" {
   enable_key_rotation     = true
   tags                    = local.tags
 }
+resource "aws_cloudwatch_log_group" "eks" {
+  name              = "/aws/eks/${local.name}/cluster"
+  retention_in_days = var.environment == "prod" ? 365 : 30
+  kms_key_id        = aws_kms_key.data.arn
+  tags              = local.tags
+}
 
 resource "aws_vpc" "this" {
   cidr_block           = var.vpc_cidr
@@ -57,6 +63,7 @@ resource "aws_subnet" "private" {
   cidr_block        = cidrsubnet(var.vpc_cidr, 4, count.index + 8)
   tags = merge(local.tags, {
     "kubernetes.io/role/internal-elb" = "1"
+    "karpenter.sh/discovery"          = local.name
   })
 }
 
@@ -155,9 +162,10 @@ resource "aws_iam_role_policy_attachment" "cluster" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 resource "aws_eks_cluster" "this" {
-  name     = local.name
-  role_arn = aws_iam_role.cluster.arn
-  version  = var.kubernetes_version
+  name                      = local.name
+  role_arn                  = aws_iam_role.cluster.arn
+  version                   = var.kubernetes_version
+  enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
   vpc_config {
     subnet_ids              = aws_subnet.private[*].id
     endpoint_private_access = true
@@ -172,8 +180,20 @@ resource "aws_eks_cluster" "this" {
   access_config {
     authentication_mode = "API_AND_CONFIG_MAP"
   }
-  depends_on = [aws_iam_role_policy_attachment.cluster]
+  depends_on = [aws_iam_role_policy_attachment.cluster, aws_cloudwatch_log_group.eks]
   tags       = local.tags
+}
+resource "aws_eks_access_entry" "deployer" {
+  cluster_name  = aws_eks_cluster.this.name
+  principal_arn = var.deployer_role_arn
+  type          = "STANDARD"
+}
+resource "aws_eks_access_policy_association" "deployer" {
+  cluster_name  = aws_eks_cluster.this.name
+  principal_arn = var.deployer_role_arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+  access_scope { type = "cluster" }
+  depends_on = [aws_eks_access_entry.deployer]
 }
 resource "aws_iam_role" "nodes" {
   name = "${local.name}-nodes"
@@ -208,6 +228,13 @@ resource "aws_eks_node_group" "system" {
   depends_on = [aws_iam_role_policy_attachment.nodes]
   tags       = local.tags
 }
+resource "aws_eks_addon" "pod_identity_agent" {
+  cluster_name                = aws_eks_cluster.this.name
+  addon_name                  = "eks-pod-identity-agent"
+  resolve_conflicts_on_update = "PRESERVE"
+  depends_on                  = [aws_eks_node_group.system]
+  tags                        = local.tags
+}
 
 resource "aws_iam_role" "workload" {
   for_each = toset(["control-plane", "generator", "runtime", "evidence"])
@@ -228,15 +255,15 @@ resource "aws_iam_role_policy" "workload" {
   role     = each.value.id
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
+    Statement = concat([{
       Effect   = "Allow"
-      Action   = each.key == "runtime" ? ["s3:GetObject"] : ["s3:GetObject", "s3:PutObject"]
-      Resource = "${aws_s3_bucket.artifacts.arn}/${each.key}/*"
+      Action   = ["kms:Decrypt", "kms:GenerateDataKey"]
+      Resource = aws_kms_key.data.arn
       }, {
       Effect   = "Allow"
-      Action   = each.key == "generator" ? ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"] : ["sqs:SendMessage"]
-      Resource = aws_sqs_queue.generation.arn
-    }]
+      Action   = ["secretsmanager:GetSecretValue"]
+      Resource = each.key == "runtime" ? aws_rds_cluster.application.master_user_secret[0].secret_arn : each.key == "evidence" ? aws_rds_cluster.evidence.master_user_secret[0].secret_arn : aws_rds_cluster.control.master_user_secret[0].secret_arn
+    }], each.key == "control-plane" ? [{ Effect = "Allow", Action = ["s3:GetObject", "s3:PutObject"], Resource = "${aws_s3_bucket.artifacts.arn}/control-plane/*" }, { Effect = "Allow", Action = ["sns:Publish"], Resource = aws_sns_topic.events.arn }] : [], each.key == "generator" ? [{ Effect = "Allow", Action = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"], Resource = aws_sqs_queue.generation.arn }, { Effect = "Allow", Action = ["s3:GetObject", "s3:PutObject"], Resource = "${aws_s3_bucket.artifacts.arn}/generator/*" }] : [], each.key == "runtime" ? [{ Effect = "Allow", Action = ["s3:GetObject"], Resource = "${aws_s3_bucket.artifacts.arn}/control-plane/*" }] : [], each.key == "evidence" ? [{ Effect = "Allow", Action = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"], Resource = aws_sqs_queue.evidence.arn }] : [])
   })
 }
 resource "aws_eks_pod_identity_association" "workload" {
@@ -245,6 +272,7 @@ resource "aws_eks_pod_identity_association" "workload" {
   namespace       = "zheta-forge"
   service_account = each.key
   role_arn        = each.value.arn
+  depends_on      = [aws_eks_addon.pod_identity_agent]
 }
 
 resource "aws_ecr_repository" "services" {
@@ -289,18 +317,67 @@ resource "aws_s3_bucket_public_access_block" "artifacts" {
   restrict_public_buckets = true
 }
 resource "aws_sqs_queue" "generation_dlq" {
-  name                      = "${local.name}-generation-dlq"
-  kms_master_key_id         = aws_kms_key.data.key_id
-  message_retention_seconds = 1209600
-  tags                      = local.tags
+  name                        = "${local.name}-generation-dlq.fifo"
+  fifo_queue                  = true
+  content_based_deduplication = true
+  kms_master_key_id           = aws_kms_key.data.key_id
+  message_retention_seconds   = 1209600
+  tags                        = local.tags
 }
 resource "aws_sqs_queue" "generation" {
-  name              = "${local.name}-generation"
-  kms_master_key_id = aws_kms_key.data.key_id
+  name                        = "${local.name}-generation.fifo"
+  fifo_queue                  = true
+  content_based_deduplication = true
+  kms_master_key_id           = aws_kms_key.data.key_id
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.generation_dlq.arn, maxReceiveCount = 5
   })
   tags = local.tags
+}
+resource "aws_sns_topic" "events" {
+  name                        = "${local.name}-events.fifo"
+  fifo_topic                  = true
+  content_based_deduplication = true
+  kms_master_key_id           = aws_kms_key.data.id
+  tags                        = local.tags
+}
+resource "aws_sqs_queue" "evidence" {
+  name                        = "${local.name}-evidence.fifo"
+  fifo_queue                  = true
+  content_based_deduplication = true
+  kms_master_key_id           = aws_kms_key.data.key_id
+  tags                        = local.tags
+}
+resource "aws_sqs_queue" "operations" {
+  name                        = "${local.name}-operations.fifo"
+  fifo_queue                  = true
+  content_based_deduplication = true
+  kms_master_key_id           = aws_kms_key.data.key_id
+  tags                        = local.tags
+}
+resource "aws_sns_topic_subscription" "events" {
+  for_each             = { evidence = aws_sqs_queue.evidence.arn, operations = aws_sqs_queue.operations.arn }
+  topic_arn            = aws_sns_topic.events.arn
+  protocol             = "sqs"
+  endpoint             = each.value
+  raw_message_delivery = true
+}
+resource "aws_sqs_queue_policy" "events" {
+  for_each  = { evidence = aws_sqs_queue.evidence, operations = aws_sqs_queue.operations }
+  queue_url = each.value.id
+  policy    = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Principal = { Service = "sns.amazonaws.com" }, Action = "sqs:SendMessage", Resource = each.value.arn, Condition = { ArnEquals = { "aws:SourceArn" = aws_sns_topic.events.arn } } }] })
+}
+
+resource "aws_budgets_budget" "monthly" {
+  name         = "${local.name}-monthly"
+  budget_type  = "COST"
+  limit_amount = tostring(var.monthly_budget_usd)
+  limit_unit   = "USD"
+  time_unit    = "MONTHLY"
+  cost_filter {
+    name   = "TagKeyValue"
+    values = ["user:Product$zheta-forge"]
+  }
 }
 
 resource "aws_db_subnet_group" "this" {
@@ -328,19 +405,20 @@ resource "aws_security_group_rule" "database_from_cluster" {
   source_security_group_id = aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
 }
 resource "aws_rds_cluster" "control" {
-  cluster_identifier          = "${local.name}-control"
-  engine                      = "aurora-postgresql"
-  database_name               = "forge"
-  master_username             = "forge_admin"
-  manage_master_user_password = true
-  db_subnet_group_name        = aws_db_subnet_group.this.name
-  vpc_security_group_ids      = [aws_security_group.database.id]
-  storage_encrypted           = true
-  kms_key_id                  = aws_kms_key.data.arn
-  backup_retention_period     = var.environment == "prod" ? 35 : 7
-  deletion_protection         = var.deletion_protection
-  skip_final_snapshot         = !var.deletion_protection
-  final_snapshot_identifier   = var.deletion_protection ? "${local.name}-final" : null
+  cluster_identifier                  = "${local.name}-control"
+  engine                              = "aurora-postgresql"
+  database_name                       = "forge"
+  master_username                     = "forge_admin"
+  manage_master_user_password         = true
+  iam_database_authentication_enabled = true
+  db_subnet_group_name                = aws_db_subnet_group.this.name
+  vpc_security_group_ids              = [aws_security_group.database.id]
+  storage_encrypted                   = true
+  kms_key_id                          = aws_kms_key.data.arn
+  backup_retention_period             = var.environment == "prod" ? 35 : 7
+  deletion_protection                 = var.deletion_protection
+  skip_final_snapshot                 = !var.deletion_protection
+  final_snapshot_identifier           = var.deletion_protection ? "${local.name}-final" : null
   serverlessv2_scaling_configuration {
     min_capacity = var.environment == "prod" ? 1 : 0.5
     max_capacity = var.environment == "prod" ? 16 : 4
@@ -357,19 +435,20 @@ resource "aws_rds_cluster_instance" "control" {
 }
 
 resource "aws_rds_cluster" "application" {
-  cluster_identifier          = "${local.name}-application"
-  engine                      = "aurora-postgresql"
-  database_name               = "generated_apps"
-  master_username             = "app_admin"
-  manage_master_user_password = true
-  db_subnet_group_name        = aws_db_subnet_group.this.name
-  vpc_security_group_ids      = [aws_security_group.database.id]
-  storage_encrypted           = true
-  kms_key_id                  = aws_kms_key.data.arn
-  backup_retention_period     = var.environment == "prod" ? 35 : 7
-  deletion_protection         = var.deletion_protection
-  skip_final_snapshot         = !var.deletion_protection
-  final_snapshot_identifier   = var.deletion_protection ? "${local.name}-application-final" : null
+  cluster_identifier                  = "${local.name}-application"
+  engine                              = "aurora-postgresql"
+  database_name                       = "generated_apps"
+  master_username                     = "app_admin"
+  manage_master_user_password         = true
+  iam_database_authentication_enabled = true
+  db_subnet_group_name                = aws_db_subnet_group.this.name
+  vpc_security_group_ids              = [aws_security_group.database.id]
+  storage_encrypted                   = true
+  kms_key_id                          = aws_kms_key.data.arn
+  backup_retention_period             = var.environment == "prod" ? 35 : 7
+  deletion_protection                 = var.deletion_protection
+  skip_final_snapshot                 = !var.deletion_protection
+  final_snapshot_identifier           = var.deletion_protection ? "${local.name}-application-final" : null
   serverlessv2_scaling_configuration {
     min_capacity = var.environment == "prod" ? 1 : 0.5
     max_capacity = var.environment == "prod" ? 16 : 4
@@ -382,6 +461,36 @@ resource "aws_rds_cluster_instance" "application" {
   cluster_identifier = aws_rds_cluster.application.id
   instance_class     = "db.serverless"
   engine             = aws_rds_cluster.application.engine
+  tags               = local.tags
+}
+
+resource "aws_rds_cluster" "evidence" {
+  cluster_identifier                  = "${local.name}-evidence"
+  engine                              = "aurora-postgresql"
+  database_name                       = "evidence"
+  master_username                     = "evidence_admin"
+  manage_master_user_password         = true
+  iam_database_authentication_enabled = true
+  db_subnet_group_name                = aws_db_subnet_group.this.name
+  vpc_security_group_ids              = [aws_security_group.database.id]
+  storage_encrypted                   = true
+  kms_key_id                          = aws_kms_key.data.arn
+  backup_retention_period             = var.environment == "prod" ? 35 : 7
+  deletion_protection                 = var.deletion_protection
+  skip_final_snapshot                 = !var.deletion_protection
+  final_snapshot_identifier           = var.deletion_protection ? "${local.name}-evidence-final" : null
+  serverlessv2_scaling_configuration {
+    min_capacity = var.environment == "prod" ? 1 : 0.5
+    max_capacity = var.environment == "prod" ? 8 : 2
+  }
+  tags = local.tags
+}
+resource "aws_rds_cluster_instance" "evidence" {
+  count              = var.environment == "prod" ? 2 : 1
+  identifier         = "${local.name}-evidence-${count.index}"
+  cluster_identifier = aws_rds_cluster.evidence.id
+  instance_class     = "db.serverless"
+  engine             = aws_rds_cluster.evidence.engine
   tags               = local.tags
 }
 
@@ -422,5 +531,5 @@ resource "aws_backup_selection" "platform" {
   name         = local.name
   iam_role_arn = aws_iam_role.backup.arn
   plan_id      = aws_backup_plan.platform.id
-  resources    = [aws_rds_cluster.control.arn, aws_rds_cluster.application.arn, aws_s3_bucket.artifacts.arn]
+  resources    = [aws_rds_cluster.control.arn, aws_rds_cluster.application.arn, aws_rds_cluster.evidence.arn, aws_s3_bucket.artifacts.arn]
 }

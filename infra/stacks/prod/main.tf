@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.10.0"
   required_providers {
     aws = {
       source = "hashicorp/aws", version = "= 5.100.0"
@@ -23,6 +23,8 @@ module "environment" {
   source              = "../../modules/environment"
   environment         = "prod"
   expected_account_id = var.account_id
+  deployer_role_arn   = var.deployer_role_arn
+  monthly_budget_usd  = 2000
   region              = var.region
   vpc_cidr            = "10.30.0.0/16"
   kubernetes_version  = var.kubernetes_version
