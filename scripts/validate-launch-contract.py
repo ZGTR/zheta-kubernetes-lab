@@ -47,8 +47,8 @@ def validate(manifest: Path, account: str, region: str, document: dict[str, obje
     if not re.fullmatch(r"[a-z]{2}(?:-gov)?-[a-z]+-[0-9]", region): fail("invalid AWS region")
     text = manifest.read_text()
     image_pattern = re.compile(
-        r"^[ ]*- name: zheta-forge/(?P<service>[a-z-]+)\n"
-        r"\s+newName: (?P<account>[0-9]{12})\.dkr\.ecr\.(?P<region>[a-z0-9-]+)\.amazonaws\.com/zheta-forge/(?P=service)\n"
+        r"^[ ]*- name: helixworks-forge/(?P<service>[a-z-]+)\n"
+        r"\s+newName: (?P<account>[0-9]{12})\.dkr\.ecr\.(?P<region>[a-z0-9-]+)\.amazonaws\.com/helixworks-forge/(?P=service)\n"
         r"\s+digest: (?P<digest>sha256:[0-9a-f]{64})$",
         re.MULTILINE,
     )

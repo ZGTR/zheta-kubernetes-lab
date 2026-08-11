@@ -29,11 +29,11 @@ grep -q 'replicas: 0' "$REPO_ROOT/gitops/apps/forge/base/workloads.yaml"
 for environment in dev staging prod; do
   overlay="$REPO_ROOT/gitops/apps/forge/overlays/$environment/kustomization.yaml"
   if grep -q 'blocked-unpinned' "$overlay"; then
-    [ "$(grep -c 'promotion-blocked.invalid/zheta-forge/' "$overlay")" -eq 5 ]
+    [ "$(grep -c 'promotion-blocked.invalid/helixworks-forge/' "$overlay")" -eq 5 ]
     [ "$(grep -c 'digest: sha256:0000000000000000000000000000000000000000000000000000000000000000' "$overlay")" -eq 5 ]
     rendered="$(kubectl kustomize "$(dirname "$overlay")")"
-    ! grep -Eq 'image: zheta-forge/.+:v1$' <<<"$rendered"
-    grep -q 'promotion-blocked.invalid/zheta-forge/broker@sha256:0000000000000000000000000000000000000000000000000000000000000000' <<<"$rendered"
+    ! grep -Eq 'image: helixworks-forge/.+:v1$' <<<"$rendered"
+    grep -q 'promotion-blocked.invalid/helixworks-forge/broker@sha256:0000000000000000000000000000000000000000000000000000000000000000' <<<"$rendered"
   else
     "$REPO_ROOT/scripts/verify-release.sh" "$environment"
   fi

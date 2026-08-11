@@ -1,4 +1,4 @@
-bucket         = "zheta-forge-prod-terraform-state-ACCOUNT_ID"
+bucket         = "helixworks-forge-prod-terraform-state-ACCOUNT_ID"
 key            = "platform/terraform.tfstate"
 region         = "eu-west-2"
 encrypt        = true

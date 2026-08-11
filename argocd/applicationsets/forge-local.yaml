@@ -8,6 +8,6 @@ spec:
     metadata: { name: forge-local }
     spec:
       project: default
-      source: { repoURL: "https://github.com/ZGTR/zheta-kubernetes-lab.git", targetRevision: master, path: gitops/apps/forge/overlays/local }
-      destination: { server: '{{url}}', namespace: zheta-forge }
+      source: { repoURL: "https://github.com/ZGTR/helixworks-kubernetes-lab.git", targetRevision: master, path: gitops/apps/forge/overlays/local }
+      destination: { server: '{{url}}', namespace: helixworks-forge }
       syncPolicy: { automated: { prune: true, selfHeal: true }, syncOptions: [CreateNamespace=true] }

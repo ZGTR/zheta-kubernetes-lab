@@ -11,10 +11,10 @@ check "expected_account" {
 }
 
 locals {
-  name = "zheta-forge-${var.environment}"
+  name = "helixworks-forge-${var.environment}"
   azs  = slice(data.aws_availability_zones.available.names, 0, 2)
   tags = {
-    Product = "zheta-forge", Environment = var.environment, ManagedBy = "terraform"
+    Product = "helixworks-forge", Environment = var.environment, ManagedBy = "terraform"
   }
 }
 
@@ -268,7 +268,7 @@ resource "aws_iam_role_policy" "workload" {
 resource "aws_eks_pod_identity_association" "workload" {
   for_each        = aws_iam_role.workload
   cluster_name    = aws_eks_cluster.this.name
-  namespace       = "zheta-forge"
+  namespace       = "helixworks-forge"
   service_account = each.key
   role_arn        = each.value.arn
   depends_on      = [aws_eks_addon.pod_identity_agent]
@@ -276,7 +276,7 @@ resource "aws_eks_pod_identity_association" "workload" {
 
 resource "aws_ecr_repository" "services" {
   for_each             = toset(["control-plane", "generator", "runtime", "evidence"])
-  name                 = "zheta-forge/${each.value}"
+  name                 = "helixworks-forge/${each.value}"
   image_tag_mutability = "IMMUTABLE"
   force_delete         = false
   encryption_configuration {
@@ -357,7 +357,7 @@ resource "aws_budgets_budget" "monthly" {
   time_unit    = "MONTHLY"
   cost_filter {
     name   = "TagKeyValue"
-    values = ["user:Product$zheta-forge"]
+    values = ["user:Product$helixworks-forge"]
   }
 }
 

@@ -8,7 +8,7 @@ mode="${1:?usage: failure-istio-ambient.sh ztunnel-recovery|waypoint-recovery}"
 
 positive_control() {
   kubectl --context "$MESH_CONTEXT" get --raw=/readyz >/dev/null
-  [ "$(kubectl --context "$MESH_CONTEXT" -n zheta-forge get deployment/control-plane -o jsonpath='{.status.availableReplicas}')" -ge 1 ]
+  [ "$(kubectl --context "$MESH_CONTEXT" -n helixworks-forge get deployment/control-plane -o jsonpath='{.status.availableReplicas}')" -ge 1 ]
 }
 
 validate_target() {
@@ -36,14 +36,14 @@ case "$mode" in
     [ -n "$replacement_uid" ] && [ "$replacement_uid" != "$TARGET_POD_UID" ]
     ;;
   waypoint-recovery)
-    validate_target zheta-forge '{.metadata.labels.gateway\.networking\.k8s\.io/gateway-name}' forge-waypoint ReplicaSet
-    [ "$(kubectl --context "$MESH_CONTEXT" -n zheta-forge get replicaset "$target_owner_name" -o jsonpath='{.metadata.ownerReferences[0].name}')" = forge-waypoint ] || { echo 'mesh failure veto: waypoint ReplicaSet is not owned by forge-waypoint Deployment' >&2; exit 1; }
-    [ "$(kubectl --context "$MESH_CONTEXT" -n zheta-forge get pods -l gateway.networking.k8s.io/gateway-name=forge-waypoint -o jsonpath='{.items[*].metadata.uid}' | wc -w | tr -d ' ')" = 1 ] || { echo 'mesh failure veto: waypoint drill requires exactly one waypoint pod' >&2; exit 1; }
-    kubectl --context "$MESH_CONTEXT" -n zheta-forge delete pod "$TARGET_POD" --wait=false
+    validate_target helixworks-forge '{.metadata.labels.gateway\.networking\.k8s\.io/gateway-name}' forge-waypoint ReplicaSet
+    [ "$(kubectl --context "$MESH_CONTEXT" -n helixworks-forge get replicaset "$target_owner_name" -o jsonpath='{.metadata.ownerReferences[0].name}')" = forge-waypoint ] || { echo 'mesh failure veto: waypoint ReplicaSet is not owned by forge-waypoint Deployment' >&2; exit 1; }
+    [ "$(kubectl --context "$MESH_CONTEXT" -n helixworks-forge get pods -l gateway.networking.k8s.io/gateway-name=forge-waypoint -o jsonpath='{.items[*].metadata.uid}' | wc -w | tr -d ' ')" = 1 ] || { echo 'mesh failure veto: waypoint drill requires exactly one waypoint pod' >&2; exit 1; }
+    kubectl --context "$MESH_CONTEXT" -n helixworks-forge delete pod "$TARGET_POD" --wait=false
     positive_control
-    kubectl --context "$MESH_CONTEXT" -n zheta-forge wait pod/"$TARGET_POD" --for=delete --timeout=120s
-    kubectl --context "$MESH_CONTEXT" -n zheta-forge rollout status deployment/forge-waypoint --timeout=180s
-    replacement_json="$(kubectl --context "$MESH_CONTEXT" -n zheta-forge get pods -l gateway.networking.k8s.io/gateway-name=forge-waypoint -o json)"
+    kubectl --context "$MESH_CONTEXT" -n helixworks-forge wait pod/"$TARGET_POD" --for=delete --timeout=120s
+    kubectl --context "$MESH_CONTEXT" -n helixworks-forge rollout status deployment/forge-waypoint --timeout=180s
+    replacement_json="$(kubectl --context "$MESH_CONTEXT" -n helixworks-forge get pods -l gateway.networking.k8s.io/gateway-name=forge-waypoint -o json)"
     replacement_uid="$(TARGET_OWNER="$target_owner_name" python3 -c 'import json,os,sys; items=json.load(sys.stdin)["items"]; assert len(items)==1, f"expected one waypoint replacement, got {len(items)}"; assert items[0]["metadata"]["ownerReferences"][0]["name"]==os.environ["TARGET_OWNER"]; print(items[0]["metadata"]["uid"])' <<<"$replacement_json")"
     [ -n "$replacement_uid" ] && [ "$replacement_uid" != "$TARGET_POD_UID" ]
     ;;

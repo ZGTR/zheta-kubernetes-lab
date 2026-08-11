@@ -6,4 +6,4 @@ patches:
     patch: |-
       - { op: replace, path: /spec/replicas, value: 1 }
 configMapGenerator:
-  - { name: forge-environment, namespace: zheta-forge, behavior: merge, literals: [ENVIRONMENT=local] }
+  - { name: forge-environment, namespace: helixworks-forge, behavior: merge, literals: [ENVIRONMENT=local] }

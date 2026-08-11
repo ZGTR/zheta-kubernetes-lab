@@ -1,41 +1,41 @@
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
-metadata: { name: generator-from-control-plane, namespace: zheta-forge }
+metadata: { name: generator-from-control-plane, namespace: helixworks-forge }
 spec:
   targetRefs: [{ group: "", kind: Service, name: generator }]
   action: ALLOW
   rules:
-    - from: [{ source: { principals: [cluster.local/ns/zheta-forge/sa/control-plane] } }]
+    - from: [{ source: { principals: [cluster.local/ns/helixworks-forge/sa/control-plane] } }]
       to: [{ operation: { methods: [POST], paths: [/generate] } }]
 ---
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
-metadata: { name: runtime-from-control-plane, namespace: zheta-forge }
+metadata: { name: runtime-from-control-plane, namespace: helixworks-forge }
 spec:
   targetRefs: [{ group: "", kind: Service, name: runtime }]
   action: ALLOW
   rules:
-    - from: [{ source: { principals: [cluster.local/ns/zheta-forge/sa/control-plane] } }]
+    - from: [{ source: { principals: [cluster.local/ns/helixworks-forge/sa/control-plane] } }]
       to: [{ operation: { methods: [GET, PUT, DELETE], paths: [/tenants/*] } }]
 ---
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
-metadata: { name: evidence-from-control-plane, namespace: zheta-forge }
+metadata: { name: evidence-from-control-plane, namespace: helixworks-forge }
 spec:
   targetRefs: [{ group: "", kind: Service, name: evidence }]
   action: ALLOW
   rules:
-    - from: [{ source: { principals: [cluster.local/ns/zheta-forge/sa/control-plane] } }]
+    - from: [{ source: { principals: [cluster.local/ns/helixworks-forge/sa/control-plane] } }]
       to: [{ operation: { methods: [GET], paths: [/events*] } }]
 ---
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
-metadata: { name: broker-from-publishers, namespace: zheta-forge }
+metadata: { name: broker-from-publishers, namespace: helixworks-forge }
 spec:
   targetRefs: [{ group: "", kind: Service, name: broker }]
   action: ALLOW
   rules:
-    - from: [{ source: { principals: [cluster.local/ns/zheta-forge/sa/control-plane] } }]
+    - from: [{ source: { principals: [cluster.local/ns/helixworks-forge/sa/control-plane] } }]
       to: [{ operation: { methods: [POST], paths: [/messages] } }]
-    - from: [{ source: { principals: [cluster.local/ns/zheta-forge/sa/evidence] } }]
+    - from: [{ source: { principals: [cluster.local/ns/helixworks-forge/sa/evidence] } }]
       to: [{ operation: { methods: [GET, POST], paths: [/subscriptions/evidence] } }]

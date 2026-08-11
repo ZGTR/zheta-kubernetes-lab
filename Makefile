@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 
 REPO_ROOT := $(CURDIR)
-CLUSTER_NAME ?= zheta-local
+CLUSTER_NAME ?= helixworks-local
 KUBECONFIG := $(REPO_ROOT)/.kube/config
 export CLUSTER_NAME
 export KUBECONFIG
@@ -25,16 +25,16 @@ image:
 	./scripts/build-and-load.sh
 
 deploy: image
-	kubectl apply -k gitops/apps/zheta/base
-	kubectl -n zheta rollout status deployment/zheta --timeout=120s
-	kubectl -n zheta get deployment,pods -o wide
+	kubectl apply -k gitops/apps/helixworks/base
+	kubectl -n helixworks rollout status deployment/helixworks --timeout=120s
+	kubectl -n helixworks get deployment,pods -o wide
 
 product-images:
 	./scripts/build-forge-images.sh
 
 product-deploy: product-images
 	kubectl apply -k gitops/apps/forge/overlays/local
-	kubectl -n zheta-forge rollout status deployment --all --timeout=180s
+	kubectl -n helixworks-forge rollout status deployment --all --timeout=180s
 
 product-local:
 	docker compose up --build -d
@@ -56,7 +56,7 @@ watch:
 
 serve:
 	@echo "Open http://localhost:8080; stop with Ctrl-C."
-	kubectl -n zheta port-forward service/zheta 8080:80
+	kubectl -n helixworks port-forward service/helixworks 8080:80
 
 kill-pod:
 	./scripts/failure.sh pod

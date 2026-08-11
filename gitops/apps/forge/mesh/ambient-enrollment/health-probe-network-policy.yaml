@@ -1,8 +1,8 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
-metadata: { name: allow-ambient-kubelet-health-probes, namespace: zheta-forge }
+metadata: { name: allow-ambient-kubelet-health-probes, namespace: helixworks-forge }
 spec:
-  podSelector: { matchLabels: { app.kubernetes.io/part-of: zheta-forge } }
+  podSelector: { matchLabels: { app.kubernetes.io/part-of: helixworks-forge } }
   policyTypes: [Ingress]
   ingress:
     - from:

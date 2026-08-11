@@ -10,7 +10,7 @@ render() {
     printf '\033[2J\033[H'
   fi
 
-  printf 'ZHETA LOCAL KUBERNETES LAB  %s\n' "$(date '+%H:%M:%S')"
+  printf 'HELIXWORKS LOCAL KUBERNETES LAB  %s\n' "$(date '+%H:%M:%S')"
   printf '%s\n' '============================================================'
   printf '\nDOCKER CONTAINERS THAT ACT AS KUBERNETES NODES\n'
   docker ps -a \
@@ -20,17 +20,17 @@ render() {
   printf '\nKUBERNETES NODES\n'
   kubectl get nodes -o wide
 
-  printf '\nZHETA DESIRED AND ACTUAL POD STATE\n'
-  kubectl -n zheta get deployment,pods -o wide 2>/dev/null || echo 'Zheta is not deployed yet. Run: make deploy'
+  printf '\nHELIXWORKS DESIRED AND ACTUAL POD STATE\n'
+  kubectl -n helixworks get deployment,pods -o wide 2>/dev/null || echo 'HelixWorks is not deployed yet. Run: make deploy'
 
   printf '\nRECENT EVENTS\n'
-  kubectl -n zheta get events --sort-by=.lastTimestamp 2>/dev/null | tail -8 || true
+  kubectl -n helixworks get events --sort-by=.lastTimestamp 2>/dev/null | tail -8 || true
 
   if kubectl api-resources --api-group=argoproj.io -o name 2>/dev/null | grep -q '^applications'; then
     printf '\nARGO CD GIT STATE\n'
-    kubectl -n argocd get application zheta \
+    kubectl -n argocd get application helixworks \
       -o custom-columns='NAME:.metadata.name,SYNC:.status.sync.status,HEALTH:.status.health.status,REVISION:.status.sync.revision' \
-      2>/dev/null || echo 'Argo CD is installed; the Zheta Application is not created yet.'
+      2>/dev/null || echo 'Argo CD is installed; the HelixWorks Application is not created yet.'
   fi
 }
 
@@ -43,4 +43,3 @@ while true; do
   render
   sleep 2
 done
-

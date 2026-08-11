@@ -23,15 +23,15 @@ validate_worker() {
 
 case "$mode" in
   pod)
-    pod_name="$(kubectl -n zheta get pods -l app.kubernetes.io/name=zheta -o jsonpath='{.items[0].metadata.name}')"
+    pod_name="$(kubectl -n helixworks get pods -l app.kubernetes.io/name=helixworks -o jsonpath='{.items[0].metadata.name}')"
     if [ -z "$pod_name" ]; then
-      echo "No Zheta pod found. Run: make deploy" >&2
+      echo "No HelixWorks pod found. Run: make deploy" >&2
       exit 1
     fi
     echo "Deleting pod $pod_name. The Deployment should create a replacement."
-    kubectl -n zheta delete pod "$pod_name"
-    kubectl -n zheta rollout status deployment/zheta --timeout=120s
-    kubectl -n zheta get pods -o wide
+    kubectl -n helixworks delete pod "$pod_name"
+    kubectl -n helixworks rollout status deployment/helixworks --timeout=120s
+    kubectl -n helixworks get pods -o wide
     ;;
   node-down)
     validate_worker

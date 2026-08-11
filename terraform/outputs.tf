@@ -1,11 +1,11 @@
 output "cluster_name" {
   description = "Kind cluster managed by Terraform."
-  value       = kind_cluster.zheta.name
+  value       = kind_cluster.helixworks.name
 }
 
 output "kubernetes_endpoint" {
   description = "Local Kubernetes API endpoint exposed by the control-plane container."
-  value       = kind_cluster.zheta.endpoint
+  value       = kind_cluster.helixworks.endpoint
 }
 
 output "kubeconfig_path" {

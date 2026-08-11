@@ -2,7 +2,7 @@ locals {
   kubeconfig_path = abspath("${path.root}/../.kube/config")
 }
 
-resource "kind_cluster" "zheta" {
+resource "kind_cluster" "helixworks" {
   name            = var.cluster_name
   node_image      = var.kind_node_image
   wait_for_ready  = true

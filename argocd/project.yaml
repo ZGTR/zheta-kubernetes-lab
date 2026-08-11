@@ -3,7 +3,7 @@ kind: AppProject
 metadata: { name: forge, namespace: argocd }
 spec:
   description: HelixWorks workloads in registered isolated environment clusters.
-  sourceRepos: ["https://github.com/ZGTR/zheta-kubernetes-lab.git"]
-  destinations: [{ namespace: zheta-forge, server: '*' }]
+  sourceRepos: ["https://github.com/ZGTR/helixworks-kubernetes-lab.git"]
+  destinations: [{ namespace: helixworks-forge, server: '*' }]
   clusterResourceWhitelist: [{ group: '', kind: Namespace }]
   namespaceResourceWhitelist: [{ group: '*', kind: '*' }]
