@@ -1,0 +1,8 @@
+FROM python:3.13-alpine
+ARG SERVICE
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 SERVICE_NAME=${SERVICE}
+WORKDIR /workspace
+COPY services /workspace/services
+USER 65532:65532
+EXPOSE 8080
+CMD ["sh", "-c", "python -m services.${SERVICE_NAME}.app"]
