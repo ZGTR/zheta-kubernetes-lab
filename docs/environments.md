@@ -1,6 +1,6 @@
 # Environment promotion contract
 
-Local, dev, staging, and production run the same four service responsibilities. They differ in substrate, isolation, durability, and release authority—not in business behavior.
+Local, dev, staging, and production package the same five deployable service images: control plane, generator, runtime, evidence, and broker. They differ in substrate, isolation, durability, and release authority—not in business behavior. Cloud environments use managed SNS/SQS for the broker responsibility, so the in-cluster broker replica stays at zero, but its image is still pinned to prevent an inherited mutable base tag from entering a release manifest.
 
 | Layer | local | dev | staging | prod |
 | --- | --- | --- | --- | --- |
@@ -10,7 +10,7 @@ Local, dev, staging, and production run the same four service responsibilities. 
 | managed state | durable single-host SQLite | isolated Aurora/S3/SNS/SQS | isolated Aurora/S3/SNS/SQS | protected Aurora/S3/SNS/SQS |
 | authority | developer kubeconfig | dev deployment role | staging deployment role | production deployment role and approval |
 
-Image promotion changes only digest pins and leaves replicas at zero. It never copies credentials, Terraform state, database authority, or cluster tokens between accounts. Launch is a second change produced from inside the target private network after cluster identity and durable secret contracts pass. Rollback selects a previously proven digest; project deletion can still tombstone release metadata under the documented lifecycle policy.
+Image promotion requires exactly five immutable digest pins, including the broker, and leaves replicas at zero. Before promotion, every cloud overlay replaces all five mutable local tags with a non-routable `promotion-blocked.invalid` guard digest; this is a deployment veto, not release evidence. An older four-digest input is rejected instead of inheriting the base broker tag. Promotion never copies credentials, Terraform state, database authority, or cluster tokens between accounts. Launch is a second change produced from inside the target private network after cluster identity and durable secret contracts pass. Rollback selects a previously proven five-digest release; project deletion can still tombstone release metadata under the documented lifecycle policy.
 
 KEDA, Karpenter, and metrics-server are not installed or referenced by a launchable overlay. Their controllers, CRDs, IAM, metrics, queue, AMI, and failure proofs are not complete. Launch therefore uses fixed replicas (two in dev/staging and three in production) within managed EKS node-group bounds. Public load balancing, DNS, TLS, and WAF are likewise absent and remain launch vetoes.
 
