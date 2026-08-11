@@ -6,7 +6,7 @@ KUBECONFIG := $(REPO_ROOT)/.kube/config
 export CLUSTER_NAME
 export KUBECONFIG
 
-.PHONY: check up image deploy product-images product-deploy product-local product-smoke product-stop mesh-render mesh-verify watch serve kill-pod node-down node-up argocd-up argocd-forge drift verify destroy
+.PHONY: check up cni-probe image deploy product-images product-deploy product-local product-smoke product-stop mesh-render mesh-verify watch serve kill-pod node-down node-up argocd-up argocd-forge drift verify destroy
 
 check:
 	./scripts/check-tools.sh
@@ -15,7 +15,11 @@ up: check
 	mkdir -p .kube .lab
 	terraform -chdir=terraform init
 	terraform -chdir=terraform apply -auto-approve -var="cluster_name=$(CLUSTER_NAME)"
+	./scripts/verify-kind-network-policy.sh
 	kubectl get nodes -o wide
+
+cni-probe:
+	./scripts/probe-network-policy.sh
 
 image:
 	./scripts/build-and-load.sh
