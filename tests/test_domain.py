@@ -102,10 +102,18 @@ class CloudContractTest(unittest.TestCase):
         ]}
         with tempfile.TemporaryDirectory() as root:
             manifest = Path(root) / "kustomization.yaml"
-            manifest.write_text("\n".join(f"newName: {account}.dkr.ecr.{region}.amazonaws.com/zheta-forge/{service}" for service in ("control-plane", "generator", "runtime", "evidence")))
+            services = ("control-plane", "generator", "runtime", "evidence", "broker")
+            image = lambda service, digest: f"- name: zheta-forge/{service}\n  newName: {account}.dkr.ecr.{region}.amazonaws.com/zheta-forge/{service}\n  digest: {digest}"
+            digests = [f"sha256:{character * 64}" for character in "abcde"]
+            manifest.write_text("\n".join(image(service, digest) for service, digest in zip(services, digests)))
             command = [sys.executable, str(Path(__file__).parents[1] / "scripts/validate-launch-contract.py"), str(manifest), account, region]
             valid = subprocess.run(command, input=json.dumps(secrets), text=True, capture_output=True)
             self.assertEqual(0, valid.returncode, valid.stderr)
+            manifest.write_text("\n".join(image(service, digest) for service, digest in zip(services[:-1], digests)))
+            missing_broker = subprocess.run(command, input=json.dumps(secrets), text=True, capture_output=True)
+            self.assertNotEqual(0, missing_broker.returncode)
+            self.assertIn("including broker", missing_broker.stderr)
+            manifest.write_text("\n".join(image(service, digest) for service, digest in zip(services, digests)))
             manifest.write_text(manifest.read_text().replace(account, "999999999999", 1))
             rejected = subprocess.run(command, input=json.dumps(secrets), text=True, capture_output=True)
             self.assertNotEqual(0, rejected.returncode)

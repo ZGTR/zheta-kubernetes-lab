@@ -62,6 +62,24 @@ MESH_CONTEXT=zheta-local MESH_FAILURE_APPROVED=1 \
 
 Use the same explicit name/UID process with the label `gateway.networking.k8s.io/gateway-name=forge-waypoint` for the waypoint drill. Each drill checks the Kubernetes API and an unaffected product Deployment before mutation, validates owner kind and UID, proves a different replacement UID, and executes an internal control-plane-to-generator request after recovery.
 
+### Live probe, not static proof
+
+`verify-ambient-source.sh` proves only that the bypass probe is bounded and source controlled. It does not prove a live denial. After reviewing an enrolled local cluster, select exactly one ready generator Pod and create an empty evidence directory:
+
+```bash
+kubectl --context zheta-local -n zheta-forge get pods \
+  -l 'app.kubernetes.io/name in (evidence,generator)' \
+  -o custom-columns=NAME:.metadata.name,UID:.metadata.uid,IP:.status.podIP,NODE:.spec.nodeName
+mkdir -p /tmp/zheta-mesh-evidence
+MESH_CONTEXT=zheta-local MESH_BYPASS_PROBE_APPROVED=1 \
+  SOURCE_POD=REVIEWED_EVIDENCE_NAME SOURCE_POD_UID=REVIEWED_EVIDENCE_UID \
+  TARGET_POD=REVIEWED_NAME TARGET_POD_UID=REVIEWED_UID \
+  MESH_EVIDENCE_DIR=/tmp/zheta-mesh-evidence \
+  bash scripts/probe-istio-waypoint-bypass.sh
+```
+
+The source-controlled probe uses the exact, already ambient-enrolled `evidence` Pod and its unauthorized ServiceAccount to call the exact generator Pod IP, bypassing the Service waypoint. A dedicated NetworkPolicy explicitly admits only evidence-to-generator ports `8080` and HBONE `15008`, so the CNI contract is inspectable and distinct from Istio authorization. The run succeeds only when the direct request returns no application bytes and the normal waypoint control succeeds before and after. It records the exact Pod UIDs and identities, policies, client error, and destination-node ztunnel observation for human review; static tests do not pretend these artifacts exist. The script is local-only and mutates no cluster resources.
+
 Rollback supports only the local overlay. It first proves the namespace is enrolled exactly as expected, removes enrollment and Forge-owned mesh resources, reapplies the local base NetworkPolicies, waits for every product Deployment, and proves an internal product request. Shared Istio releases and Gateway API CRDs are always preserved because they have a separate cluster owner.
 
 ## AWS and EKS mapping

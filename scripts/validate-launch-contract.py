@@ -7,7 +7,8 @@ import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
-SERVICES = ("control-plane", "generator", "runtime", "evidence")
+IMAGE_SERVICES = ("control-plane", "generator", "runtime", "evidence", "broker")
+SECRET_SERVICES = ("control-plane", "generator", "runtime", "evidence")
 
 def fail(message: str) -> None:
     raise SystemExit(f"launch veto: {message}")
@@ -45,15 +46,20 @@ def validate(manifest: Path, account: str, region: str, document: dict[str, obje
     if not re.fullmatch(r"[0-9]{12}", account): fail("expected account must contain 12 digits")
     if not re.fullmatch(r"[a-z]{2}(?:-gov)?-[a-z]+-[0-9]", region): fail("invalid AWS region")
     text = manifest.read_text()
-    image_pattern = re.compile(r"newName: ([0-9]{12})\.dkr\.ecr\.([a-z0-9-]+)\.amazonaws\.com/zheta-forge/([a-z-]+)$", re.MULTILINE)
+    image_pattern = re.compile(
+        r"^[ ]*- name: zheta-forge/(?P<service>[a-z-]+)\n"
+        r"\s+newName: (?P<account>[0-9]{12})\.dkr\.ecr\.(?P<region>[a-z0-9-]+)\.amazonaws\.com/zheta-forge/(?P=service)\n"
+        r"\s+digest: (?P<digest>sha256:[0-9a-f]{64})$",
+        re.MULTILINE,
+    )
     images = image_pattern.findall(text)
-    if {service for _, _, service in images} != set(SERVICES) or len(images) != len(SERVICES):
-        fail("overlay must bind exactly the four Forge ECR repositories")
-    if any(image_account != account or image_region != region for image_account, image_region, _ in images):
+    if {service for service, _, _, _ in images} != set(IMAGE_SERVICES) or len(images) != len(IMAGE_SERVICES):
+        fail("overlay must bind exactly the five Forge ECR repositories, including broker")
+    if any(image_account != account or image_region != region for _, image_account, image_region, _ in images):
         fail("every ECR image must match EXPECTED_AWS_ACCOUNT_ID and AWS_REGION")
 
     secrets = decoded_secrets(document)
-    expected = {f"{service}-secrets" for service in SERVICES}
+    expected = {f"{service}-secrets" for service in SECRET_SERVICES}
     if set(secrets) != expected: fail("exactly four workload secrets are required")
     tokens = []
     for secret in sorted(expected):

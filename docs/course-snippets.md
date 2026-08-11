@@ -19,7 +19,7 @@ This public repository is the executable monorepo for both the Kubernetes founda
 | Kubernetes workload base | `gitops/apps/forge/base/workloads.yaml` |
 | Local Kustomize overlay | `gitops/apps/forge/overlays/local/kustomization.yaml` |
 | Blocked cloud overlay before promotion | `gitops/apps/forge/overlays/prod/kustomization.yaml` |
-| Digest pinning logic and disabled supply-chain candidate | `scripts/promote-release.py` and `.github/workflows/promote-forge.yaml` |
+| Five-image digest pinning, including broker, and disabled supply-chain candidate | `scripts/promote-release.py` and `.github/workflows/promote-forge.yaml` |
 | Private launch gate | `scripts/launch-release.sh` and `scripts/launch-release.py` |
 | Optional Ambient Mesh boundary | `gitops/apps/forge/mesh/ambient`, `scripts/install-istio-ambient.sh`, and `docs/istio-ambient.md` |
 | In-cluster Argo CD per private EKS cluster | `argocd/applicationsets/forge-dev.yaml`, `forge-staging.yaml`, `forge-prod.yaml` |

@@ -7,7 +7,7 @@ The central claim is that production readiness comes from explicit ownership bou
 ## Start with the product on one laptop
 
 ```bash
-make product-local   # Build and start the four services plus the visible web page.
+make product-local   # Build and start the five services plus the visible web page.
 make product-smoke   # Prove create-to-delete behavior through HTTP evidence.
 make product-stop    # Remove only this repository's Compose containers/network.
 ```
@@ -25,7 +25,7 @@ make product-smoke
 
 AWS declarations live under `infra/stacks/{dev,staging,prod}`. Each stack targets a different AWS account and EKS cluster. They are reviewable IaC only: this repository never supplies credentials or performs an AWS apply automatically.
 
-This is the single public monorepo used by both courses. The local Kind lab remains under `terraform/`, while product services, Kubernetes/GitOps delivery, and isolated AWS stacks deepen the same running system. See [the stable course snippet index](docs/course-snippets.md). Cloud overlays intentionally render zero service replicas. The candidate public promotion workflow is disabled until its third-party actions are immutably pinned and it produces scan, signature, and SBOM evidence. A separate private-runner command proves the exact AWS account, durable secrets, and cluster identity before it enables replicas. Public ingress/TLS/WAF, live PostgreSQL migration proof, restore proof, authenticated cloud product smoke, and any KEDA or Karpenter installation remain explicit launch vetoes rather than implied features.
+This is the single public monorepo used by both courses. The local Kind lab remains under `terraform/`, while product services, Kubernetes/GitOps delivery, and isolated AWS stacks deepen the same running system. See [the stable course snippet index](docs/course-snippets.md). Cloud overlays intentionally render zero service replicas and replace all five local tags with non-routable guard digests until promotion. Promotion requires real immutable digests for all five images, including the broker; a legacy four-digest input fails closed so production cannot inherit `broker:v1` from the base. The candidate public promotion workflow is disabled until its third-party actions are immutably pinned and it produces scan, signature, and SBOM evidence. A separate private-runner command proves the exact AWS account, durable secrets, and cluster identity before it enables replicas. Public ingress/TLS/WAF, live PostgreSQL migration proof, restore proof, authenticated cloud product smoke, and any KEDA or Karpenter installation remain explicit launch vetoes rather than implied features.
 
 The optional [Istio Ambient Mesh boundary](docs/istio-ambient.md) adds source-only namespace enrollment, ztunnel mTLS/L4 policy, a destination waypoint, L7 authorization, and NetworkPolicy compatibility. It is not included by any cloud overlay and does not claim an AWS deployment.
 

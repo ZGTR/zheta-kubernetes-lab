@@ -14,6 +14,7 @@ jobs:
       - name: Fail closed until supply-chain evidence exists
         run: |
           echo 'Promotion is disabled: pin every third-party action to an immutable commit SHA.' >&2
+          echo 'Any future promotion must require immutable digests for all five images, including broker; four-image input must fail closed.' >&2
           echo 'Add source verification, vulnerability scan, image signature, and SBOM evidence before build/push authority is enabled.' >&2
           echo 'Private-cluster launch and authenticated cloud product smoke remain separate gates.' >&2
           exit 1
