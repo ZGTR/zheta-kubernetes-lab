@@ -1,13 +1,8 @@
 apiVersion: kustomize.config.k8s.io/v1alpha1
 kind: Component
 resources:
-  - waypoint.yaml
-  - peer-authentication.yaml
-  - l4-authorization.yaml
-  - l7-authorization.yaml
-  - waypoint-network-policy.yaml
   - health-probe-network-policy.yaml
-  - bypass-observation-network-policy.yaml
+  - peer-authentication.yaml
 patches:
   - path: namespace-patch.yaml
   - path: network-policy-patch.yaml

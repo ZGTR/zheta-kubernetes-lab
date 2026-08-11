@@ -6,7 +6,7 @@ This slice adds an optional, fail-closed service-mesh boundary to the existing m
 
 Istio `1.30.3` is pinned because it is the current patch release as of 2026-08-11. The official [1.30.3 release announcement](https://istio.io/latest/news/releases/1.30.x/announcing-1.30.3/) identifies it as the latest robustness patch. Istio's [production-oriented Ambient Helm guide](https://istio.io/latest/docs/ambient/install/helm/) requires Gateway API CRDs before a waypoint and currently uses Gateway API `v1.5.1`. `mesh/istio-ambient/versions.env` pins both versions and the downloaded CRD bundle's SHA-256.
 
-Source rendering and static policy checks are proven locally. No Istio control plane, EKS cluster, AWS account, live mTLS session, denial, failover, or rollback was exercised by this commit.
+Source rendering and static policy checks are proven locally. No Istio control plane, EKS cluster, AWS account, live mTLS session, denial, failover, or rollback was exercised by this commit. Kind v0.32.0, the Kubernetes 1.35.5 node digest, and its NetworkPolicy-enforcing kindnet image are pinned under `platform/kind`; these pins still require the checked-in live packet probe.
 
 ## Authority and traffic path
 
@@ -35,19 +35,39 @@ Ambient uses HBONE TCP `15008`, so the component patches the existing applicatio
 
 ## Bounded local workflow
 
-The default local/dev/staging/prod overlays remain unchanged. To render the opt-in local composition:
+The default local/dev/staging/prod overlays remain unchanged. Before mesh enrollment, deploy the local product and prove the primary CNI's positive and negative paths with exact reviewed control-plane, evidence, broker, and generator Pod names and UIDs:
 
 ```bash
-kubectl kustomize gitops/apps/forge/overlays/ambient-local
+make cni-probe \
+  NETWORK_POLICY_PROBE_APPROVED=1 \
+  ALLOWED_SOURCE_POD=CONTROL_NAME ALLOWED_SOURCE_POD_UID=CONTROL_UID \
+  DENIED_SOURCE_POD=EVIDENCE_NAME DENIED_SOURCE_POD_UID=EVIDENCE_UID \
+  DENIED_SOURCE_CONTROL_POD=BROKER_NAME DENIED_SOURCE_CONTROL_POD_UID=BROKER_UID \
+  TARGET_POD=GENERATOR_NAME TARGET_POD_UID=GENERATOR_UID \
+  NETWORK_POLICY_EVIDENCE_DIR=/absolute/empty/evidence-directory
+```
+
+This probe fails if kindnet is not the pinned ready DaemonSet, any identity changed, an allowed path fails, or evidence-to-generator returns anything except the expected policy timeout. Static tests never count as this packet evidence.
+
+The opt-in mesh progresses through three independently renderable overlays:
+
+```bash
+kubectl kustomize gitops/apps/forge/overlays/ambient-enrollment-local # Day 31: enrollment + STRICT mTLS
+kubectl kustomize gitops/apps/forge/overlays/ambient-l4-local         # Day 32: destination L4 identities
+kubectl kustomize gitops/apps/forge/overlays/ambient-local            # Day 33: waypoint + L7, full state
 bash scripts/verify-ambient-source.sh
 ```
 
 Installation mutates a cluster and therefore requires an exact current context and explicit approval:
 
 ```bash
-MESH_CONTEXT=zheta-local MESH_INSTALL_APPROVED=1 bash scripts/install-istio-ambient.sh
-kubectl --context zheta-local apply -k gitops/apps/forge/overlays/ambient-local
-MESH_CONTEXT=zheta-local bash scripts/verify-istio-ambient.sh forge
+MESH_CONTEXT=kind-zheta-local MESH_INSTALL_APPROVED=1 bash scripts/install-istio-ambient.sh
+kubectl --context kind-zheta-local apply -k gitops/apps/forge/overlays/ambient-enrollment-local
+MESH_CONTEXT=kind-zheta-local bash scripts/verify-istio-ambient.sh enrollment
+kubectl --context kind-zheta-local apply -k gitops/apps/forge/overlays/ambient-l4-local
+MESH_CONTEXT=kind-zheta-local bash scripts/verify-istio-ambient.sh l4
+kubectl --context kind-zheta-local apply -k gitops/apps/forge/overlays/ambient-local
+MESH_CONTEXT=kind-zheta-local bash scripts/verify-istio-ambient.sh l7
 ```
 
 Failure drills delete exactly one validated ztunnel or waypoint pod and wait for its controller:
@@ -64,21 +84,22 @@ Use the same explicit name/UID process with the label `gateway.networking.k8s.io
 
 ### Live probe, not static proof
 
-`verify-ambient-source.sh` proves only that the bypass probe is bounded and source controlled. It does not prove a live denial. After reviewing an enrolled local cluster, select exactly one ready generator Pod and create an empty evidence directory:
+`verify-ambient-source.sh` proves only that the L4/bypass probe is bounded and source controlled. It does not prove a live denial. At the Day 32 overlay, run `probe-istio-l4-authorization.sh`; it uses the allowed POST—not the Day 33 GET/403—as its positive control. After Day 33, `probe-istio-waypoint-bypass.sh` uses both the POST and the waypoint-enforced GET/403. Both require exact evidence, broker, and generator identities:
 
 ```bash
-kubectl --context zheta-local -n zheta-forge get pods \
-  -l 'app.kubernetes.io/name in (evidence,generator)' \
+kubectl --context kind-zheta-local -n zheta-forge get pods \
+  -l 'app.kubernetes.io/name in (broker,evidence,generator)' \
   -o custom-columns=NAME:.metadata.name,UID:.metadata.uid,IP:.status.podIP,NODE:.spec.nodeName
 mkdir -p /tmp/zheta-mesh-evidence
-MESH_CONTEXT=zheta-local MESH_BYPASS_PROBE_APPROVED=1 \
+MESH_CONTEXT=kind-zheta-local MESH_L4_PROBE_APPROVED=1 \
   SOURCE_POD=REVIEWED_EVIDENCE_NAME SOURCE_POD_UID=REVIEWED_EVIDENCE_UID \
+  NETWORK_DENY_SOURCE_POD=REVIEWED_BROKER_NAME NETWORK_DENY_SOURCE_POD_UID=REVIEWED_BROKER_UID \
   TARGET_POD=REVIEWED_NAME TARGET_POD_UID=REVIEWED_UID \
   MESH_EVIDENCE_DIR=/tmp/zheta-mesh-evidence \
-  bash scripts/probe-istio-waypoint-bypass.sh
+  bash scripts/probe-istio-l4-authorization.sh
 ```
 
-The source-controlled probe uses the exact, already ambient-enrolled `evidence` Pod and its unauthorized ServiceAccount to call the exact generator Pod IP, bypassing the Service waypoint. A dedicated NetworkPolicy explicitly admits only evidence-to-generator ports `8080` and HBONE `15008`, so the CNI contract is inspectable and distinct from Istio authorization. The run succeeds only when the direct request returns no application bytes and the normal waypoint control succeeds before and after. It records the exact Pod UIDs and identities, policies, client error, and destination-node ztunnel observation for human review; static tests do not pretend these artifacts exist. The script is local-only and mutates no cluster resources.
+The paired NetworkPolicies select evidence egress and generator ingress explicitly and admit only ports `8080` and HBONE `15008`. Immediately before the mesh socket attempt, the probe requires a separate broker-to-generator timeout to prove kindnet is still enforcing the unexcepted path. It then accepts only the exact transport-denial status for evidence-to-generator and requires the destination ztunnel's exact UID plus a log event in the request window containing the target IP, evidence SPIFFE identity, and a denial indicator. The run is inconclusive—not successful—if any correlation is missing. It mutates no cluster resources.
 
 Rollback supports only the local overlay. It first proves the namespace is enrolled exactly as expected, removes enrollment and Forge-owned mesh resources, reapplies the local base NetworkPolicies, waits for every product Deployment, and proves an internal product request. Shared Istio releases and Gateway API CRDs are always preserved because they have a separate cluster owner.
 

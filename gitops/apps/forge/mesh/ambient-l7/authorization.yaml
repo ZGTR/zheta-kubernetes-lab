@@ -1,8 +1,6 @@
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
-metadata:
-  name: generator-from-control-plane
-  namespace: zheta-forge
+metadata: { name: generator-from-control-plane, namespace: zheta-forge }
 spec:
   targetRefs: [{ group: "", kind: Service, name: generator }]
   action: ALLOW
@@ -12,9 +10,7 @@ spec:
 ---
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
-metadata:
-  name: runtime-from-control-plane
-  namespace: zheta-forge
+metadata: { name: runtime-from-control-plane, namespace: zheta-forge }
 spec:
   targetRefs: [{ group: "", kind: Service, name: runtime }]
   action: ALLOW
@@ -24,9 +20,7 @@ spec:
 ---
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
-metadata:
-  name: evidence-from-control-plane
-  namespace: zheta-forge
+metadata: { name: evidence-from-control-plane, namespace: zheta-forge }
 spec:
   targetRefs: [{ group: "", kind: Service, name: evidence }]
   action: ALLOW
@@ -36,9 +30,7 @@ spec:
 ---
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
-metadata:
-  name: broker-from-publishers
-  namespace: zheta-forge
+metadata: { name: broker-from-publishers, namespace: zheta-forge }
 spec:
   targetRefs: [{ group: "", kind: Service, name: broker }]
   action: ALLOW
