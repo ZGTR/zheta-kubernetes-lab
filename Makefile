@@ -6,7 +6,7 @@ KUBECONFIG := $(REPO_ROOT)/.kube/config
 export CLUSTER_NAME
 export KUBECONFIG
 
-.PHONY: check up image deploy product-images product-deploy product-local product-smoke product-stop watch serve kill-pod node-down node-up argocd-up argocd-forge drift verify destroy
+.PHONY: check up image deploy product-images product-deploy product-local product-smoke product-stop mesh-render mesh-verify watch serve kill-pod node-down node-up argocd-up argocd-forge drift verify destroy
 
 check:
 	./scripts/check-tools.sh
@@ -40,6 +40,12 @@ product-smoke:
 
 product-stop:
 	docker compose down
+
+mesh-render:
+	kubectl kustomize gitops/apps/forge/overlays/ambient-local
+
+mesh-verify:
+	./scripts/verify-ambient-source.sh
 
 watch:
 	./scripts/watch.sh
