@@ -1,6 +1,6 @@
-# Zheta Forge architecture
+# HelixWorks architecture
 
-Zheta Forge is not one generated web page. It is a bounded platform that turns an organization-owned blueprint into a content-addressed release record while keeping provider administration, hosted runtime, and generated-application authority independently revocable.
+HelixWorks is not one generated web page. It is a bounded platform that turns an organization-owned blueprint into a content-addressed release record while keeping provider administration, hosted runtime, and generated-application authority independently revocable.
 
 ```mermaid
 flowchart LR

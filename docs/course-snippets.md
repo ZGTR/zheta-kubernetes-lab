@@ -1,6 +1,6 @@
 # Course snippet index
 
-This public repository is the executable monorepo for both the Kubernetes foundations course and the Zheta Forge AWS/GitOps course. Course prose should link to these stable files rather than copy drifting alternatives.
+This public repository is the executable monorepo for both the Kubernetes foundations course and the HelixWorks AWS/GitOps course. Course prose should link to these stable files rather than copy drifting alternatives.
 
 | Concept | Stable source |
 | --- | --- |
