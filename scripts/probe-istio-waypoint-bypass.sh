@@ -42,7 +42,7 @@ target_node="$(kubectl --context "$MESH_CONTEXT" -n "$namespace" get pod "$TARGE
 [ -n "$target_ip" ] && [ -n "$target_node" ]
 
 ztunnel_json="$(kubectl --context "$MESH_CONTEXT" -n istio-system get pods -l app=ztunnel --field-selector "spec.nodeName=$target_node" -o json)"
-ztunnel_pod="$(python3 -c 'import json,sys; items=json.load(sys.stdin)["items"]; assert len(items)==1, f"expected one destination ztunnel, got {len(items)}"; assert any(c.get("type")=="Ready" and c.get("status")=="True" for c in items[0]["status"]["conditions"]); print(items[0]["metadata"]["name"])' <<<"$ztunnel_json")"
+read -r ztunnel_pod ztunnel_uid < <(python3 -c 'import json,sys; items=json.load(sys.stdin)["items"]; assert len(items)==1, f"expected one destination ztunnel, got {len(items)}"; assert any(c.get("type")=="Ready" and c.get("status")=="True" for c in items[0]["status"]["conditions"]); print(items[0]["metadata"]["name"], items[0]["metadata"]["uid"])' <<<"$ztunnel_json")
 
 kubectl --context "$MESH_CONTEXT" -n "$namespace" get networkpolicy allow-bounded-bypass-observation -o yaml > "$MESH_EVIDENCE_DIR/network-policy.yaml"
 grep -q 'app.kubernetes.io/name: evidence' "$MESH_EVIDENCE_DIR/network-policy.yaml"
@@ -50,8 +50,8 @@ grep -q 'app.kubernetes.io/name: generator' "$MESH_EVIDENCE_DIR/network-policy.y
 grep -q 'port: 8080' "$MESH_EVIDENCE_DIR/network-policy.yaml"
 grep -q 'port: 15008' "$MESH_EVIDENCE_DIR/network-policy.yaml"
 kubectl --context "$MESH_CONTEXT" -n "$namespace" get authorizationpolicy allow-only-destination-waypoint -o yaml > "$MESH_EVIDENCE_DIR/authorization-policy.yaml"
-printf 'context=%s\nsource_pod=%s\nsource_uid=%s\nsource_identity=cluster.local/ns/zheta-forge/sa/evidence\ntarget_pod=%s\ntarget_uid=%s\ntarget_ip=%s\ntarget_node=%s\nztunnel_pod=%s\n' \
-  "$MESH_CONTEXT" "$SOURCE_POD" "$SOURCE_POD_UID" "$TARGET_POD" "$TARGET_POD_UID" "$target_ip" "$target_node" "$ztunnel_pod" > "$MESH_EVIDENCE_DIR/target.txt"
+printf 'context=%s\nsource_pod=%s\nsource_uid=%s\nsource_identity=cluster.local/ns/zheta-forge/sa/evidence\ntarget_pod=%s\ntarget_uid=%s\ntarget_ip=%s\ntarget_node=%s\nztunnel_pod=%s\nztunnel_uid=%s\n' \
+  "$MESH_CONTEXT" "$SOURCE_POD" "$SOURCE_POD_UID" "$TARGET_POD" "$TARGET_POD_UID" "$target_ip" "$target_node" "$ztunnel_pod" "$ztunnel_uid" > "$MESH_EVIDENCE_DIR/target.txt"
 
 printf 'before: ' > "$MESH_EVIDENCE_DIR/controls.txt"
 verify_mesh_product_policy >> "$MESH_EVIDENCE_DIR/controls.txt"
@@ -68,6 +68,8 @@ raise SystemExit(0 if data else 18)' 2> "$MESH_EVIDENCE_DIR/denial-stderr.txt"; 
   exit 1
 fi
 kubectl --context "$MESH_CONTEXT" -n istio-system logs pod/"$ztunnel_pod" --since-time="$probe_started" > "$MESH_EVIDENCE_DIR/ztunnel-observation.log"
+[ -s "$MESH_EVIDENCE_DIR/ztunnel-observation.log" ] || { echo 'mesh probe inconclusive: destination ztunnel emitted no observation' >&2; exit 1; }
+[ "$(kubectl --context "$MESH_CONTEXT" -n istio-system get pod "$ztunnel_pod" -o jsonpath='{.metadata.uid}')" = "$ztunnel_uid" ]
 [ "$(kubectl --context "$MESH_CONTEXT" -n "$namespace" get pod "$SOURCE_POD" -o jsonpath='{.metadata.uid}')" = "$SOURCE_POD_UID" ]
 [ "$(kubectl --context "$MESH_CONTEXT" -n "$namespace" get pod "$TARGET_POD" -o jsonpath='{.metadata.uid}')" = "$TARGET_POD_UID" ]
 printf 'after: ' >> "$MESH_EVIDENCE_DIR/controls.txt"

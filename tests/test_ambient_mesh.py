@@ -58,6 +58,8 @@ class AmbientMeshSourceTest(unittest.TestCase):
         self.assertIn("verify_mesh_product_policy", probe)
         self.assertIn("supports only the local overlay", probe)
         self.assertIn("ztunnel-observation.log", probe)
+        self.assertIn("ztunnel_uid", probe)
+        self.assertIn("destination ztunnel emitted no observation", probe)
         self.assertIn("allow-bounded-bypass-observation", manifest)
         self.assertIn("port: 8080", manifest)
         self.assertIn("port: 15008", manifest)
