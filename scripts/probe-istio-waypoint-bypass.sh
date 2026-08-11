@@ -17,7 +17,7 @@ namespace=zheta-forge
 : "${MESH_EVIDENCE_DIR:?set MESH_EVIDENCE_DIR to an existing absolute evidence directory}"
 case "$MESH_EVIDENCE_DIR" in /*) ;; *) echo 'mesh probe veto: evidence directory must be absolute' >&2; exit 1 ;; esac
 [ -d "$MESH_EVIDENCE_DIR" ] || { echo 'mesh probe veto: evidence directory does not exist' >&2; exit 1; }
-for evidence_file in target.txt network-policy.yaml authorization-policy.yaml denial-stderr.txt ztunnel-observation.log controls.txt; do
+for evidence_file in target.txt network-policy.yaml authorization-policy.yaml denial-stderr.txt ztunnel-observation.log ztunnel-denial-record.log controls.txt; do
   [ ! -e "$MESH_EVIDENCE_DIR/$evidence_file" ] || { echo "mesh probe veto: evidence file already exists: $evidence_file" >&2; exit 1; }
 done
 
@@ -86,7 +86,7 @@ network_denial_status=$?
 set -e
 [ "$network_denial_status" = 42 ] || { echo "mesh probe veto: NetworkPolicy enforcement status was $network_denial_status, expected 42" >&2; exit 1; }
 
-probe_started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+probe_started="$(python3 -c 'from datetime import datetime,timezone; print(datetime.now(timezone.utc).isoformat(timespec="microseconds").replace("+00:00","Z"))')"
 set +e
 kubectl --context "$MESH_CONTEXT" -n "$namespace" exec pod/"$SOURCE_POD" -- env TARGET_IP="$target_ip" python -c 'import os,socket,sys
 try:
@@ -103,15 +103,19 @@ set -e
 correlated=0
 for _ in 1 2 3 4 5 6 7 8 9 10; do
   kubectl --context "$MESH_CONTEXT" -n istio-system logs pod/"$ztunnel_pod" --since-time="$probe_started" > "$MESH_EVIDENCE_DIR/ztunnel-observation.log"
-  if grep -Fq "$target_ip" "$MESH_EVIDENCE_DIR/ztunnel-observation.log" \
-    && grep -Fq 'spiffe://cluster.local/ns/zheta-forge/sa/evidence' "$MESH_EVIDENCE_DIR/ztunnel-observation.log" \
-    && grep -Eiq 'denied|authorization|policy rejection|rbac' "$MESH_EVIDENCE_DIR/ztunnel-observation.log"; then
+  if TARGET_IP="$target_ip" python3 -c 'import os,re,sys
+target=os.environ["TARGET_IP"]+":8080"
+identity="spiffe://cluster.local/ns/zheta-forge/sa/evidence"
+denial=re.compile(r"denied|authorization|policy rejection|rbac", re.IGNORECASE)
+matches=[line for line in open(sys.argv[1], encoding="utf-8") if target in line and identity in line and denial.search(line)]
+if not matches: raise SystemExit(1)
+sys.stdout.write(matches[-1])' "$MESH_EVIDENCE_DIR/ztunnel-observation.log" > "$MESH_EVIDENCE_DIR/ztunnel-denial-record.log"; then
     correlated=1
     break
   fi
   sleep 2
 done
-[ "$correlated" = 1 ] || { echo 'mesh probe inconclusive: no target-IP/source-identity/policy-denial event in the exact ztunnel window' >&2; exit 1; }
+[ "$correlated" = 1 ] || { echo 'mesh probe inconclusive: no single target-IP:port/source-identity/policy-denial record in the exact ztunnel window' >&2; exit 1; }
 [ "$(kubectl --context "$MESH_CONTEXT" -n istio-system get pod "$ztunnel_pod" -o jsonpath='{.metadata.uid}')" = "$ztunnel_uid" ]
 [ "$(kubectl --context "$MESH_CONTEXT" -n "$namespace" get pod "$SOURCE_POD" -o jsonpath='{.metadata.uid}')" = "$SOURCE_POD_UID" ]
 [ "$(kubectl --context "$MESH_CONTEXT" -n "$namespace" get pod "$TARGET_POD" -o jsonpath='{.metadata.uid}')" = "$TARGET_POD_UID" ]
