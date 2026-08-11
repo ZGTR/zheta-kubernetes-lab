@@ -97,7 +97,7 @@ spec:
       containers:
         - name: runtime
           image: zheta-forge/runtime:v1
-          envFrom: [{ secretRef: { name: runtime-secrets } }]
+          envFrom: [{ configMapRef: { name: forge-environment } }, { secretRef: { name: runtime-secrets } }]
           ports: [{ name: http, containerPort: 8080 }]
           readinessProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 5 }
           resources: { requests: { cpu: 50m, memory: 64Mi }, limits: { cpu: 500m, memory: 256Mi } }
@@ -119,7 +119,7 @@ spec:
       containers:
         - name: evidence
           image: zheta-forge/evidence:v1
-          envFrom: [{ secretRef: { name: evidence-secrets } }]
+          envFrom: [{ configMapRef: { name: forge-environment } }, { secretRef: { name: evidence-secrets } }]
           ports: [{ name: http, containerPort: 8080 }]
           readinessProbe: { httpGet: { path: /healthz, port: http }, periodSeconds: 5 }
           resources: { requests: { cpu: 25m, memory: 32Mi }, limits: { cpu: 250m, memory: 128Mi } }

@@ -1,4 +1,4 @@
-import base64, hashlib, hmac, json, tempfile, time, unittest
+import base64, hashlib, hmac, json, os, subprocess, sys, tempfile, time, unittest
 from pathlib import Path
 from services.control_plane.adapters import SqlArtifactStore, SqlProjectRepository
 from services.control_plane.domain import Forge
@@ -82,5 +82,33 @@ class PubSubTest(unittest.TestCase):
     def test_cloud_broker_endpoints_are_structurally_validated(self):
         with self.assertRaises(ValueError): publisher_from_url("arn:aws:sns:eu-west-2:123:events.fifo")
         with self.assertRaises(ValueError): subscriber_from_url("https://sqs.eu-west-2.amazonaws.com/not-an-account/evidence.fifo")
+
+class CloudContractTest(unittest.TestCase):
+    def test_runtime_and_evidence_reject_local_databases_in_cloud_mode(self):
+        for module, variable in (("services.runtime.app", "RUNTIME_DATABASE_URL"), ("services.evidence.app", "EVIDENCE_DATABASE_URL")):
+            environment = {**os.environ, "ENVIRONMENT": "dev", "SERVICE_TOKEN": "s" * 32, variable: "sqlite:////data/local.db"}
+            result = subprocess.run([sys.executable, "-c", f"import {module}"], env=environment, text=True, capture_output=True)
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn(variable, result.stderr)
+
+    def test_launch_contract_binds_images_and_broker_to_account_and_region(self):
+        account, region, token = "123456789012", "eu-west-2", "s" * 32
+        encoded = lambda values: {key: base64.b64encode(value.encode()).decode() for key, value in values.items()}
+        secrets = {"items": [
+            {"metadata": {"name": "control-plane-secrets"}, "data": encoded({"SERVICE_TOKEN": token, "JWT_SECRET": "j" * 32, "CONTROL_DATABASE_URL": "postgresql://user:pass@control/db", "ARTIFACT_BUCKET": "zheta-forge-artifacts", "BROKER_TOPIC": f"arn:aws:sns:{region}:{account}:events.fifo", "EVIDENCE_URL": "http://evidence:8080"})},
+            {"metadata": {"name": "generator-secrets"}, "data": encoded({"SERVICE_TOKEN": token})},
+            {"metadata": {"name": "runtime-secrets"}, "data": encoded({"SERVICE_TOKEN": token, "RUNTIME_DATABASE_URL": "postgresql://user:pass@runtime/db"})},
+            {"metadata": {"name": "evidence-secrets"}, "data": encoded({"SERVICE_TOKEN": token, "EVIDENCE_DATABASE_URL": "postgresql://user:pass@evidence/db", "BROKER_SUBSCRIPTION": f"https://sqs.{region}.amazonaws.com/{account}/evidence.fifo"})},
+        ]}
+        with tempfile.TemporaryDirectory() as root:
+            manifest = Path(root) / "kustomization.yaml"
+            manifest.write_text("\n".join(f"newName: {account}.dkr.ecr.{region}.amazonaws.com/zheta-forge/{service}" for service in ("control-plane", "generator", "runtime", "evidence")))
+            command = [sys.executable, str(Path(__file__).parents[1] / "scripts/validate-launch-contract.py"), str(manifest), account, region]
+            valid = subprocess.run(command, input=json.dumps(secrets), text=True, capture_output=True)
+            self.assertEqual(0, valid.returncode, valid.stderr)
+            manifest.write_text(manifest.read_text().replace(account, "999999999999", 1))
+            rejected = subprocess.run(command, input=json.dumps(secrets), text=True, capture_output=True)
+            self.assertNotEqual(0, rejected.returncode)
+            self.assertIn("every ECR image", rejected.stderr)
 
 if __name__ == "__main__": unittest.main()

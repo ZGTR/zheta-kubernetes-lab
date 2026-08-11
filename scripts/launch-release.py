@@ -10,7 +10,6 @@ content = path.read_text()
 if "digest-pinned-awaiting-private-launch" not in content or content.count("digest: sha256:") != 4: raise SystemExit("images must be digest-pinned before launch")
 replicas = 3 if environment == "prod" else 2
 block = "replicas:\n" + "\n".join(f"  - {{ name: {name}, count: {replicas} }}" for name in ("control-plane", "generator", "runtime", "evidence")) + "\n"
-content = content.replace("resources: [../../base]", "resources: [../../base, ready-policies.yaml]")
 content = content.replace("digest-pinned-awaiting-private-launch", "private-contracts-proven")
 content = content.replace("configMapGenerator:", block + "configMapGenerator:")
 path.write_text(content)

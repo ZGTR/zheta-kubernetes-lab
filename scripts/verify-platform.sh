@@ -18,6 +18,8 @@ for stack in dev staging prod; do
 done
 ! rg -n 'registry\.example|sha256:(a{64}|b{64}|c{64})' "$REPO_ROOT/gitops/apps/forge/overlays"
 grep -q 'replicas: 0' "$REPO_ROOT/gitops/apps/forge/base/workloads.yaml"
+[ "$(grep -c 'envFrom: \[{ configMapRef: { name: forge-environment } }' "$REPO_ROOT/gitops/apps/forge/base/workloads.yaml")" -eq 4 ]
+! find "$REPO_ROOT/gitops/apps/forge/overlays" -name 'ready-policies.yaml' -print -quit | grep -q .
 for environment in dev staging prod; do
   overlay="$REPO_ROOT/gitops/apps/forge/overlays/$environment/kustomization.yaml"
   if grep -q 'blocked-unpinned' "$overlay"; then

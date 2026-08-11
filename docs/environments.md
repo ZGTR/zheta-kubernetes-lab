@@ -12,7 +12,7 @@ Local, dev, staging, and production run the same four service responsibilities. 
 
 Image promotion changes only digest pins and leaves replicas at zero. It never copies credentials, Terraform state, database authority, or cluster tokens between accounts. Launch is a second change produced from inside the target private network after cluster identity and durable secret contracts pass. Rollback selects a previously proven digest; project deletion can still tombstone release metadata under the documented lifecycle policy.
 
-KEDA and Karpenter are not installed or referenced by a launchable overlay. Their IAM, controller, CRD, queue, AMI, and failure proofs are not complete, so autoscaling currently stops at native HPA plus managed EKS node-group bounds. Public load balancing, DNS, TLS, and WAF are likewise absent and remain launch vetoes.
+KEDA, Karpenter, and metrics-server are not installed or referenced by a launchable overlay. Their controllers, CRDs, IAM, metrics, queue, AMI, and failure proofs are not complete. Launch therefore uses fixed replicas (two in dev/staging and three in production) within managed EKS node-group bounds. Public load balancing, DNS, TLS, and WAF are likewise absent and remain launch vetoes.
 
 `scripts/launch-release.sh` is an infrastructure gate only. It requires an explicit AWS profile, region, expected 12-digit account, private runner, and named Kubernetes context. It does not replace the authenticated product smoke, database migration and restore dossier, image vulnerability scan, signature verification, or SBOM evidence.
 
