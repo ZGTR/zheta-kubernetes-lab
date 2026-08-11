@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata: { name: forge, namespace: argocd }
 spec:
-  description: Zheta Forge workloads in registered isolated environment clusters.
+  description: HelixWorks workloads in registered isolated environment clusters.
   sourceRepos: ["https://github.com/ZGTR/zheta-kubernetes-lab.git"]
   destinations: [{ namespace: zheta-forge, server: '*' }]
   clusterResourceWhitelist: [{ group: '', kind: Namespace }]

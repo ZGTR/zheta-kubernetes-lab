@@ -21,4 +21,4 @@ for attempt in $(seq 1 30); do
   sleep 1
 done
 [ "$evidence_count" -ge 10 ] || { echo "durable evidence did not catch up" >&2; exit 1; }
-printf 'Zheta Forge lifecycle completed with authenticated durable evidence_events=%s.\n' "$evidence_count"
+printf 'HelixWorks lifecycle completed with authenticated durable evidence_events=%s.\n' "$evidence_count"

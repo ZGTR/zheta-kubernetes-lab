@@ -1,8 +1,8 @@
-# Zheta Forge: from laptop processes to isolated AWS production
+# HelixWorks: from laptop processes to isolated AWS production
 
 Build and operate a general AI application platform through its complete customer lifecycle, first as five local containers, then on a real multi-node Kubernetes cluster, and finally as three isolated AWS account designs for dev, staging, and production.
 
-The central claim is that production readiness comes from explicit ownership boundaries and observable reconciliation loops, not from adding Kubernetes to a single demo page. The original Terraform, Kind, Kubernetes failure, and Argo CD drift lessons remain below; Zheta Forge adds multiple single-responsibility services and an AWS destination without creating billable infrastructure.
+The central claim is that production readiness comes from explicit ownership boundaries and observable reconciliation loops, not from adding Kubernetes to a single demo page. The original Terraform, Kind, Kubernetes failure, and Argo CD drift lessons remain below; HelixWorks adds multiple single-responsibility services and an AWS destination without creating billable infrastructure.
 
 ## Start with the product on one laptop
 

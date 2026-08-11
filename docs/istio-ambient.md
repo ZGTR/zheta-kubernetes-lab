@@ -1,4 +1,4 @@
-# Istio Ambient Mesh for Zheta Forge
+# Istio Ambient Mesh for HelixWorks
 
 This slice adds an optional, fail-closed service-mesh boundary to the existing monorepo. It does not add another product, repository, or business authority. The domain model, MVC controller, injected adapters, transactional outbox, and Pub/Sub contracts remain unchanged.
 
