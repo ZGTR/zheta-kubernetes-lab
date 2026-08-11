@@ -73,9 +73,9 @@ MESH_CONTEXT=kind-zheta-local bash scripts/verify-istio-ambient.sh l7
 Failure drills delete exactly one validated ztunnel or waypoint pod and wait for its controller:
 
 ```bash
-kubectl --context zheta-local -n istio-system get pods -l app=ztunnel \
+kubectl --context kind-zheta-local -n istio-system get pods -l app=ztunnel \
   -o custom-columns=NAME:.metadata.name,UID:.metadata.uid,NODE:.spec.nodeName
-MESH_CONTEXT=zheta-local MESH_FAILURE_APPROVED=1 \
+MESH_CONTEXT=kind-zheta-local MESH_FAILURE_APPROVED=1 \
   TARGET_POD=REVIEWED_NAME TARGET_POD_UID=REVIEWED_UID \
   bash scripts/failure-istio-ambient.sh ztunnel-recovery
 ```
