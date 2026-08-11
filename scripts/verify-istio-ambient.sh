@@ -20,7 +20,7 @@ kubectl --context "$MESH_CONTEXT" -n zheta-forge get authorizationpolicy allow-o
 for service_account in control-plane generator runtime evidence broker; do
   kubectl --context "$MESH_CONTEXT" -n zheta-forge get serviceaccount "$service_account" >/dev/null
 done
-for policy in control-plane-paths internal-services broker-publish-subscribe forge-waypoint allow-ambient-kubelet-health-probes; do
+for policy in control-plane-paths internal-services broker-publish-subscribe forge-waypoint allow-ambient-kubelet-health-probes allow-bounded-bypass-observation; do
   kubectl --context "$MESH_CONTEXT" -n zheta-forge get networkpolicy "$policy" >/dev/null
 done
 verify_mesh_product_policy

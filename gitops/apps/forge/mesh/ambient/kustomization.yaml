@@ -7,6 +7,7 @@ resources:
   - l7-authorization.yaml
   - waypoint-network-policy.yaml
   - health-probe-network-policy.yaml
+  - bypass-observation-network-policy.yaml
 patches:
   - path: namespace-patch.yaml
   - path: network-policy-patch.yaml

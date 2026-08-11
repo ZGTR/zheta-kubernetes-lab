@@ -46,6 +46,23 @@ class AmbientMeshSourceTest(unittest.TestCase):
         self.assertIn("supports only the local overlay", rollback)
         self.assertIn("rollout status deployment --all", rollback)
 
+    def test_waypoint_bypass_probe_is_bounded_live_evidence(self):
+        root = Path(__file__).resolve().parents[1]
+        probe = (root / "scripts/probe-istio-waypoint-bypass.sh").read_text()
+        manifest = (root / "gitops/apps/forge/mesh/ambient/bypass-observation-network-policy.yaml").read_text()
+        documentation = (root / "docs/istio-ambient.md").read_text()
+        self.assertIn("MESH_BYPASS_PROBE_APPROVED", probe)
+        self.assertIn("SOURCE_POD_UID", probe)
+        self.assertIn("TARGET_POD_UID", probe)
+        self.assertIn("MESH_EVIDENCE_DIR", probe)
+        self.assertIn("verify_mesh_product_policy", probe)
+        self.assertIn("supports only the local overlay", probe)
+        self.assertIn("ztunnel-observation.log", probe)
+        self.assertIn("allow-bounded-bypass-observation", manifest)
+        self.assertIn("port: 8080", manifest)
+        self.assertIn("port: 15008", manifest)
+        self.assertIn("Live probe, not static proof", documentation)
+
 
 if __name__ == "__main__":
     unittest.main()

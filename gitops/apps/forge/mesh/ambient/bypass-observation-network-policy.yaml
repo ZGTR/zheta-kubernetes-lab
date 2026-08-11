@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-bounded-bypass-observation
+  namespace: zheta-forge
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: evidence
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: generator
+      ports:
+        # CNI implementations can observe either the original application port
+        # or the redirected HBONE port. Both remain L4-denied by Istio.
+        - { protocol: TCP, port: 8080 }
+        - { protocol: TCP, port: 15008 }

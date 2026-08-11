@@ -32,13 +32,18 @@ grep -A20 'name: generator-from-control-plane' "$manifest" | grep -q 'targetRefs
 for environment in dev staging prod; do
   ! grep -q 'mesh/ambient' "$REPO_ROOT/gitops/apps/forge/overlays/$environment/kustomization.yaml"
 done
-for script in install-istio-ambient.sh verify-istio-ambient.sh failure-istio-ambient.sh rollback-istio-ambient.sh; do
+for script in install-istio-ambient.sh verify-istio-ambient.sh failure-istio-ambient.sh rollback-istio-ambient.sh probe-istio-waypoint-bypass.sh; do
   bash -n "$REPO_ROOT/scripts/$script"
 done
 grep -q 'MESH_INSTALL_APPROVED' "$REPO_ROOT/scripts/install-istio-ambient.sh"
 grep -q 'MESH_FAILURE_APPROVED' "$REPO_ROOT/scripts/failure-istio-ambient.sh"
 grep -q 'MESH_ROLLBACK_APPROVED' "$REPO_ROOT/scripts/rollback-istio-ambient.sh"
 grep -q 'TARGET_POD_UID' "$REPO_ROOT/scripts/failure-istio-ambient.sh"
+grep -q 'MESH_BYPASS_PROBE_APPROVED' "$REPO_ROOT/scripts/probe-istio-waypoint-bypass.sh"
+grep -q 'SOURCE_POD_UID' "$REPO_ROOT/scripts/probe-istio-waypoint-bypass.sh"
+grep -q 'supports only the local overlay' "$REPO_ROOT/scripts/probe-istio-waypoint-bypass.sh"
+grep -q 'allow-bounded-bypass-observation' "$REPO_ROOT/gitops/apps/forge/mesh/ambient/bypass-observation-network-policy.yaml"
+grep -q 'ztunnel-observation.log' "$REPO_ROOT/scripts/probe-istio-waypoint-bypass.sh"
 ! grep -q 'helm uninstall' "$REPO_ROOT/scripts/rollback-istio-ambient.sh"
 ! grep -q '|| true' "$REPO_ROOT/scripts/rollback-istio-ambient.sh"
 echo 'Ambient source contracts render and fail-closed operational scripts are bounded.'
