@@ -1,6 +1,6 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
-metadata: { name: forge-waypoint, namespace: zheta-forge }
+metadata: { name: forge-waypoint, namespace: helixworks-forge }
 spec:
   podSelector: { matchLabels: { gateway.networking.k8s.io/gateway-name: forge-waypoint } }
   policyTypes: [Ingress, Egress]

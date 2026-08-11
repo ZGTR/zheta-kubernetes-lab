@@ -1,12 +1,12 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources: [../../base]
-commonAnnotations: { zheta.io/release-state: blocked-unpinned }
+commonAnnotations: { helixworks.io/release-state: blocked-unpinned }
 configMapGenerator:
-  - { name: forge-environment, namespace: zheta-forge, behavior: merge, literals: [ENVIRONMENT=staging] }
+  - { name: forge-environment, namespace: helixworks-forge, behavior: merge, literals: [ENVIRONMENT=staging] }
 images:
-  - { name: zheta-forge/control-plane, newName: promotion-blocked.invalid/zheta-forge/control-plane, digest: sha256:0000000000000000000000000000000000000000000000000000000000000000 }
-  - { name: zheta-forge/generator, newName: promotion-blocked.invalid/zheta-forge/generator, digest: sha256:0000000000000000000000000000000000000000000000000000000000000000 }
-  - { name: zheta-forge/runtime, newName: promotion-blocked.invalid/zheta-forge/runtime, digest: sha256:0000000000000000000000000000000000000000000000000000000000000000 }
-  - { name: zheta-forge/evidence, newName: promotion-blocked.invalid/zheta-forge/evidence, digest: sha256:0000000000000000000000000000000000000000000000000000000000000000 }
-  - { name: zheta-forge/broker, newName: promotion-blocked.invalid/zheta-forge/broker, digest: sha256:0000000000000000000000000000000000000000000000000000000000000000 }
+  - { name: helixworks-forge/control-plane, newName: promotion-blocked.invalid/helixworks-forge/control-plane, digest: sha256:0000000000000000000000000000000000000000000000000000000000000000 }
+  - { name: helixworks-forge/generator, newName: promotion-blocked.invalid/helixworks-forge/generator, digest: sha256:0000000000000000000000000000000000000000000000000000000000000000 }
+  - { name: helixworks-forge/runtime, newName: promotion-blocked.invalid/helixworks-forge/runtime, digest: sha256:0000000000000000000000000000000000000000000000000000000000000000 }
+  - { name: helixworks-forge/evidence, newName: promotion-blocked.invalid/helixworks-forge/evidence, digest: sha256:0000000000000000000000000000000000000000000000000000000000000000 }
+  - { name: helixworks-forge/broker, newName: promotion-blocked.invalid/helixworks-forge/broker, digest: sha256:0000000000000000000000000000000000000000000000000000000000000000 }

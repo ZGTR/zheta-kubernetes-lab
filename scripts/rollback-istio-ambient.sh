@@ -3,7 +3,7 @@ source "$(dirname "$0")/istio-ambient-lib.sh"
 require_mesh_context
 require_mesh_approval MESH_ROLLBACK_APPROVED
 
-namespace=zheta-forge
+namespace=helixworks-forge
 [ "$(kubectl --context "$MESH_CONTEXT" -n "$namespace" get configmap forge-environment -o jsonpath='{.data.ENVIRONMENT}')" = local ] || { echo 'mesh rollback veto: this bounded rollback supports only the local overlay' >&2; exit 1; }
 [ "$(kubectl --context "$MESH_CONTEXT" get namespace "$namespace" -o jsonpath='{.metadata.labels.istio\.io/dataplane-mode}')" = ambient ] || { echo 'mesh rollback veto: namespace is not ambient' >&2; exit 1; }
 [ "$(kubectl --context "$MESH_CONTEXT" get namespace "$namespace" -o jsonpath='{.metadata.labels.istio\.io/use-waypoint}')" = forge-waypoint ] || { echo 'mesh rollback veto: namespace does not use forge-waypoint' >&2; exit 1; }

@@ -1,24 +1,24 @@
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
-metadata: { name: control-plane-l4-boundary, namespace: zheta-forge }
-spec: { rules: [{ from: [{ source: { principals: [cluster.local/ns/zheta-forge/sa/forge-waypoint] } }] }] }
+metadata: { name: control-plane-l4-boundary, namespace: helixworks-forge }
+spec: { rules: [{ from: [{ source: { principals: [cluster.local/ns/helixworks-forge/sa/forge-waypoint] } }] }] }
 ---
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
-metadata: { name: generator-l4-boundary, namespace: zheta-forge }
-spec: { rules: [{ from: [{ source: { principals: [cluster.local/ns/zheta-forge/sa/forge-waypoint] } }] }] }
+metadata: { name: generator-l4-boundary, namespace: helixworks-forge }
+spec: { rules: [{ from: [{ source: { principals: [cluster.local/ns/helixworks-forge/sa/forge-waypoint] } }] }] }
 ---
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
-metadata: { name: runtime-l4-boundary, namespace: zheta-forge }
-spec: { rules: [{ from: [{ source: { principals: [cluster.local/ns/zheta-forge/sa/forge-waypoint] } }] }] }
+metadata: { name: runtime-l4-boundary, namespace: helixworks-forge }
+spec: { rules: [{ from: [{ source: { principals: [cluster.local/ns/helixworks-forge/sa/forge-waypoint] } }] }] }
 ---
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
-metadata: { name: evidence-l4-boundary, namespace: zheta-forge }
-spec: { rules: [{ from: [{ source: { principals: [cluster.local/ns/zheta-forge/sa/forge-waypoint] } }] }] }
+metadata: { name: evidence-l4-boundary, namespace: helixworks-forge }
+spec: { rules: [{ from: [{ source: { principals: [cluster.local/ns/helixworks-forge/sa/forge-waypoint] } }] }] }
 ---
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
-metadata: { name: broker-l4-boundary, namespace: zheta-forge }
-spec: { rules: [{ from: [{ source: { principals: [cluster.local/ns/zheta-forge/sa/forge-waypoint] } }] }] }
+metadata: { name: broker-l4-boundary, namespace: helixworks-forge }
+spec: { rules: [{ from: [{ source: { principals: [cluster.local/ns/helixworks-forge/sa/forge-waypoint] } }] }] }

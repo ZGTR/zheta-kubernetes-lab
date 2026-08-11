@@ -19,7 +19,7 @@ To run the same service responsibilities on Kind:
 ```bash
 make up
 make product-deploy
-kubectl -n zheta-forge port-forward service/control-plane 8080:8080
+kubectl -n helixworks-forge port-forward service/control-plane 8080:8080
 make product-smoke
 ```
 
@@ -65,7 +65,7 @@ flowchart LR
   reconcile --> docker["Three Docker node containers"]
   docker --> evidence
   manifests["Kubernetes manifests"] --> kube["Deployment controller"]
-  kube --> pods["Zheta pods"]
+  kube --> pods["HelixWorks pods"]
   pods --> evidence
   git["Git master branch"] --> argo["Argo CD application controller"]
   argo --> manifests
@@ -108,14 +108,14 @@ make up
 This runs `terraform init` and `terraform apply`. Terraform records one `kind_cluster` resource in local state. Docker gains these containers:
 
 ```text
-zheta-local-control-plane
-zheta-local-worker
-zheta-local-worker2
+helixworks-local-control-plane
+helixworks-local-worker
+helixworks-local-worker2
 ```
 
 Kubernetes sees the same containers as one control-plane node and two worker nodes. The kubeconfig is isolated at `.kube/config`; the lab does not replace the user's normal kubeconfig.
 
-### Build and deploy Zheta
+### Build and deploy HelixWorks
 
 ```bash
 make deploy
@@ -125,9 +125,9 @@ The command performs four distinct operations:
 
 | Code or command | Software effect | Machine/runtime effect | Evidence |
 | --- | --- | --- | --- |
-| `docker build -t zheta-demo:v1 app` | Builds the Nginx demo image | Stores image layers in the host Docker engine | `docker image inspect zheta-demo:v1` |
+| `docker build -t helixworks-demo:v1 app` | Builds the Nginx demo image | Stores image layers in the host Docker engine | `docker image inspect helixworks-demo:v1` |
 | `kind load docker-image ...` | Copies the image into each node's containerd image store | Does not start a pod or create another VM | `docker exec <node> crictl images` |
-| `kubectl apply -k .../base` | Stores Namespace, Deployment, and Service desired state | Scheduler selects Docker-backed worker nodes | `kubectl -n zheta get deployment,pods -o wide` |
+| `kubectl apply -k .../base` | Stores Namespace, Deployment, and Service desired state | Scheduler selects Docker-backed worker nodes | `kubectl -n helixworks get deployment,pods -o wide` |
 | Deployment controller creates two replicas | Reconciles two pod objects | Container processes consume the Docker VM's CPU and RAM | Two Ready pods and Service endpoints |
 
 Serve the application in one terminal:
@@ -164,7 +164,7 @@ WATCH_ONCE=1 make watch
 make kill-pod
 ```
 
-The script resolves exactly one pod with the Zheta label, deletes it, and waits for the Deployment to become available again. Terraform does nothing because the cluster still exists. Argo CD does nothing because the Deployment manifest still matches Git. The Kubernetes Deployment controller creates the replacement.
+The script resolves exactly one pod with the HelixWorks label, deletes it, and waits for the Deployment to become available again. Terraform does nothing because the cluster still exists. Argo CD does nothing because the Deployment manifest still matches Git. The Kubernetes Deployment controller creates the replacement.
 
 Decision rule: a missing instance of an existing Deployment is Kubernetes runtime drift, not infrastructure drift and not Git drift.
 
@@ -174,7 +174,7 @@ Decision rule: a missing instance of an existing Deployment is Kubernetes runtim
 make node-down
 ```
 
-The script validates that `zheta-local-worker` has both the expected Kind cluster label and worker role before stopping it. Docker removes one running node container from the available machine set. Kubernetes eventually reports the node unavailable; pod movement follows Kubernetes node-health and toleration timing rather than happening instantly.
+The script validates that `helixworks-local-worker` has both the expected Kind cluster label and worker role before stopping it. Docker removes one running node container from the available machine set. Kubernetes eventually reports the node unavailable; pod movement follows Kubernetes node-health and toleration timing rather than happening instantly.
 
 Restore the same simulated machine:
 
@@ -200,10 +200,10 @@ make argocd-up
 
 This command:
 
-1. Builds and loads the local Zheta image.
+1. Builds and loads the local HelixWorks image.
 2. Installs Argo CD into the `argocd` namespace.
 3. Applies `argocd/application.yaml`.
-4. Argo CD clones `master` and renders `gitops/apps/zheta/overlays/dev`.
+4. Argo CD clones `master` and renders `gitops/apps/helixworks/overlays/dev`.
 5. Argo CD applies the three-replica overlay and waits for `Synced` and `Healthy`.
 
 No Argo CD password is needed for this terminal-first demo. The Kubernetes `Application` custom resource exposes the sync and health evidence through `kubectl`.
@@ -217,7 +217,7 @@ make drift
 The script deliberately changes the live Deployment from Git's three replicas to one:
 
 ```bash
-kubectl -n zheta scale deployment/zheta --replicas=1
+kubectl -n helixworks scale deployment/helixworks --replicas=1
 ```
 
 Argo CD's automated `selfHeal` notices that the live object no longer matches the rendered Git object and restores three replicas. The script prints each observed replica count and sync state until both are correct.
@@ -235,10 +235,10 @@ Decision rule: use the owner of the desired state to diagnose recovery. Do not u
 ## Repository map
 
 ```text
-app/                         Docker image for the visible Zheta page
+app/                         Docker image for the visible HelixWorks page
 terraform/                   Kind cluster desired state
-gitops/apps/zheta/base/      Reusable Kubernetes resources
-gitops/apps/zheta/overlays/  Argo CD's three-replica development state
+gitops/apps/helixworks/base/      Reusable Kubernetes resources
+gitops/apps/helixworks/overlays/  Argo CD's three-replica development state
 argocd/application.yaml      Git repository-to-cluster contract
 scripts/watch.sh             Joined terminal dashboard
 scripts/failure.sh           Validated pod/node failure actions

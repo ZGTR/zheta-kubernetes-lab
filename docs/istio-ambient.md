@@ -20,7 +20,7 @@ flowchart LR
 ```
 
 - The cluster platform owner installs Gateway API, `istio-base`, `istiod`, `istio-cni`, and `ztunnel`.
-- The Forge owner enrolls only `zheta-forge`, owns `forge-waypoint`, and attaches destination policies.
+- The Forge owner enrolls only `helixworks-forge`, owns `forge-waypoint`, and attaches destination policies.
 - Kubernetes ServiceAccounts remain the workload identity source. On EKS, the existing Pod Identity associations remain the separate AWS authorization source; SPIFFE identity does not grant AWS permissions.
 - ztunnel enforces strict mTLS and the L4 source-principal rule. The waypoint enforces HTTP method/path rules attached with `targetRefs` to destination Services.
 - NetworkPolicy remains CNI-owned defense in depth. Ambient does not bypass it.
@@ -61,21 +61,21 @@ bash scripts/verify-ambient-source.sh
 Installation mutates a cluster and therefore requires an exact current context and explicit approval:
 
 ```bash
-MESH_CONTEXT=kind-zheta-local MESH_INSTALL_APPROVED=1 bash scripts/install-istio-ambient.sh
-kubectl --context kind-zheta-local apply -k gitops/apps/forge/overlays/ambient-enrollment-local
-MESH_CONTEXT=kind-zheta-local bash scripts/verify-istio-ambient.sh enrollment
-kubectl --context kind-zheta-local apply -k gitops/apps/forge/overlays/ambient-l4-local
-MESH_CONTEXT=kind-zheta-local bash scripts/verify-istio-ambient.sh l4
-kubectl --context kind-zheta-local apply -k gitops/apps/forge/overlays/ambient-local
-MESH_CONTEXT=kind-zheta-local bash scripts/verify-istio-ambient.sh l7
+MESH_CONTEXT=kind-helixworks-local MESH_INSTALL_APPROVED=1 bash scripts/install-istio-ambient.sh
+kubectl --context kind-helixworks-local apply -k gitops/apps/forge/overlays/ambient-enrollment-local
+MESH_CONTEXT=kind-helixworks-local bash scripts/verify-istio-ambient.sh enrollment
+kubectl --context kind-helixworks-local apply -k gitops/apps/forge/overlays/ambient-l4-local
+MESH_CONTEXT=kind-helixworks-local bash scripts/verify-istio-ambient.sh l4
+kubectl --context kind-helixworks-local apply -k gitops/apps/forge/overlays/ambient-local
+MESH_CONTEXT=kind-helixworks-local bash scripts/verify-istio-ambient.sh l7
 ```
 
 Failure drills delete exactly one validated ztunnel or waypoint pod and wait for its controller:
 
 ```bash
-kubectl --context kind-zheta-local -n istio-system get pods -l app=ztunnel \
+kubectl --context kind-helixworks-local -n istio-system get pods -l app=ztunnel \
   -o custom-columns=NAME:.metadata.name,UID:.metadata.uid,NODE:.spec.nodeName
-MESH_CONTEXT=kind-zheta-local MESH_FAILURE_APPROVED=1 \
+MESH_CONTEXT=kind-helixworks-local MESH_FAILURE_APPROVED=1 \
   TARGET_POD=REVIEWED_NAME TARGET_POD_UID=REVIEWED_UID \
   bash scripts/failure-istio-ambient.sh ztunnel-recovery
 ```
@@ -87,15 +87,15 @@ Use the same explicit name/UID process with the label `gateway.networking.k8s.io
 `verify-ambient-source.sh` proves only that the L4/bypass probe is bounded and source controlled. It does not prove a live denial. At the Day 32 overlay, run `probe-istio-l4-authorization.sh`; it uses the allowed POST—not the Day 33 GET/403—as its positive control. After Day 33, `probe-istio-waypoint-bypass.sh` uses both the POST and the waypoint-enforced GET/403. Both require exact evidence, broker, and generator identities:
 
 ```bash
-kubectl --context kind-zheta-local -n zheta-forge get pods \
+kubectl --context kind-helixworks-local -n helixworks-forge get pods \
   -l 'app.kubernetes.io/name in (broker,evidence,generator)' \
   -o custom-columns=NAME:.metadata.name,UID:.metadata.uid,IP:.status.podIP,NODE:.spec.nodeName
-mkdir -p /tmp/zheta-mesh-evidence
-MESH_CONTEXT=kind-zheta-local MESH_L4_PROBE_APPROVED=1 \
+mkdir -p /tmp/helixworks-mesh-evidence
+MESH_CONTEXT=kind-helixworks-local MESH_L4_PROBE_APPROVED=1 \
   SOURCE_POD=REVIEWED_EVIDENCE_NAME SOURCE_POD_UID=REVIEWED_EVIDENCE_UID \
   NETWORK_DENY_SOURCE_POD=REVIEWED_BROKER_NAME NETWORK_DENY_SOURCE_POD_UID=REVIEWED_BROKER_UID \
   TARGET_POD=REVIEWED_NAME TARGET_POD_UID=REVIEWED_UID \
-  MESH_EVIDENCE_DIR=/tmp/zheta-mesh-evidence \
+  MESH_EVIDENCE_DIR=/tmp/helixworks-mesh-evidence \
   bash scripts/probe-istio-l4-authorization.sh
 ```
 

@@ -1,4 +1,4 @@
 apiVersion: security.istio.io/v1
 kind: PeerAuthentication
-metadata: { name: forge-strict-mtls, namespace: zheta-forge }
+metadata: { name: forge-strict-mtls, namespace: helixworks-forge }
 spec: { mtls: { mode: STRICT } }

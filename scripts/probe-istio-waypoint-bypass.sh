@@ -7,7 +7,7 @@ require_mesh_approval MESH_BYPASS_PROBE_APPROVED
 stage="${MESH_PROBE_STAGE:-l7}"
 [ "$stage" = l4 ] || [ "$stage" = l7 ] || { echo 'mesh probe veto: MESH_PROBE_STAGE must be l4 or l7' >&2; exit 1; }
 
-namespace=zheta-forge
+namespace=helixworks-forge
 : "${SOURCE_POD:?set SOURCE_POD to the reviewed evidence pod name}"
 : "${SOURCE_POD_UID:?set SOURCE_POD_UID to the reviewed evidence pod UID}"
 : "${TARGET_POD:?set TARGET_POD to the reviewed generator pod name}"
@@ -25,10 +25,10 @@ done
 [ "$(kubectl --context "$MESH_CONTEXT" get namespace "$namespace" -o jsonpath='{.metadata.labels.istio\.io/dataplane-mode}')" = ambient ]
 if [ "$stage" = l4 ]; then
   [ -z "$(kubectl --context "$MESH_CONTEXT" get namespace "$namespace" -o jsonpath='{.metadata.labels.istio\.io/use-waypoint}')" ] || { echo 'mesh probe veto: L4 stage must not use the Day 33 waypoint' >&2; exit 1; }
-  expected_principal=cluster.local/ns/zheta-forge/sa/control-plane
+  expected_principal=cluster.local/ns/helixworks-forge/sa/control-plane
 else
   [ "$(kubectl --context "$MESH_CONTEXT" get namespace "$namespace" -o jsonpath='{.metadata.labels.istio\.io/use-waypoint}')" = forge-waypoint ]
-  expected_principal=cluster.local/ns/zheta-forge/sa/forge-waypoint
+  expected_principal=cluster.local/ns/helixworks-forge/sa/forge-waypoint
 fi
 [ "$(kubectl --context "$MESH_CONTEXT" -n "$namespace" get authorizationpolicy generator-l4-boundary -o jsonpath='{.spec.action}')" = ALLOW ]
 [ "$(kubectl --context "$MESH_CONTEXT" -n "$namespace" get authorizationpolicy generator-l4-boundary -o jsonpath='{.spec.rules[0].from[0].source.principals[0]}')" = "$expected_principal" ]
@@ -64,7 +64,7 @@ grep -q 'port: 15008' "$MESH_EVIDENCE_DIR/network-policy.yaml"
 [ "$(grep -c 'app.kubernetes.io/name: evidence' "$MESH_EVIDENCE_DIR/network-policy.yaml")" -ge 2 ]
 [ "$(grep -c 'app.kubernetes.io/name: generator' "$MESH_EVIDENCE_DIR/network-policy.yaml")" -ge 2 ]
 kubectl --context "$MESH_CONTEXT" -n "$namespace" get authorizationpolicy generator-l4-boundary -o yaml > "$MESH_EVIDENCE_DIR/authorization-policy.yaml"
-printf 'context=%s\nsource_pod=%s\nsource_uid=%s\nsource_identity=cluster.local/ns/zheta-forge/sa/evidence\nnetwork_deny_source=%s\nnetwork_deny_source_uid=%s\ntarget_pod=%s\ntarget_uid=%s\ntarget_ip=%s\ntarget_node=%s\nztunnel_pod=%s\nztunnel_uid=%s\n' \
+printf 'context=%s\nsource_pod=%s\nsource_uid=%s\nsource_identity=cluster.local/ns/helixworks-forge/sa/evidence\nnetwork_deny_source=%s\nnetwork_deny_source_uid=%s\ntarget_pod=%s\ntarget_uid=%s\ntarget_ip=%s\ntarget_node=%s\nztunnel_pod=%s\nztunnel_uid=%s\n' \
   "$MESH_CONTEXT" "$SOURCE_POD" "$SOURCE_POD_UID" "$NETWORK_DENY_SOURCE_POD" "$NETWORK_DENY_SOURCE_POD_UID" "$TARGET_POD" "$TARGET_POD_UID" "$target_ip" "$target_node" "$ztunnel_pod" "$ztunnel_uid" > "$MESH_EVIDENCE_DIR/target.txt"
 
 printf 'before: ' > "$MESH_EVIDENCE_DIR/controls.txt"
@@ -123,7 +123,7 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
   kubectl --context "$MESH_CONTEXT" -n istio-system logs pod/"$ztunnel_pod" --since-time="$probe_started" > "$MESH_EVIDENCE_DIR/ztunnel-observation.log"
   if TARGET_IP="$target_ip" python3 -c 'import os,re,sys
 target=os.environ["TARGET_IP"]+":8080"
-identity="spiffe://cluster.local/ns/zheta-forge/sa/evidence"
+identity="spiffe://cluster.local/ns/helixworks-forge/sa/evidence"
 denial=re.compile(r"denied|authorization|policy rejection|rbac", re.IGNORECASE)
 matches=[line for line in open(sys.argv[1], encoding="utf-8") if target in line and identity in line and denial.search(line)]
 if not matches: raise SystemExit(1)

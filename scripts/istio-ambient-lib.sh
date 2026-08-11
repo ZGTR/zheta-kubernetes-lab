@@ -16,12 +16,12 @@ require_mesh_approval() {
 }
 
 verify_mesh_l4_policy() {
-  kubectl --context "$MESH_CONTEXT" -n zheta-forge exec deployment/control-plane -- python -c 'import json,os,urllib.request; request=urllib.request.Request("http://generator:8080/generate", data=json.dumps({"name":"mesh-policy-proof","archetype":"workflow"}).encode(), method="POST", headers={"Content-Type":"application/json","X-Service-Token":os.environ["SERVICE_TOKEN"]}); result=json.load(urllib.request.urlopen(request, timeout=5)); assert result["artifact_id"].startswith("sha256:")'
+  kubectl --context "$MESH_CONTEXT" -n helixworks-forge exec deployment/control-plane -- python -c 'import json,os,urllib.request; request=urllib.request.Request("http://generator:8080/generate", data=json.dumps({"name":"mesh-policy-proof","archetype":"workflow"}).encode(), method="POST", headers={"Content-Type":"application/json","X-Service-Token":os.environ["SERVICE_TOKEN"]}); result=json.load(urllib.request.urlopen(request, timeout=5)); assert result["artifact_id"].startswith("sha256:")'
 }
 
 verify_mesh_l7_policy() {
   verify_mesh_l4_policy
-  kubectl --context "$MESH_CONTEXT" -n zheta-forge exec deployment/control-plane -- python -c 'import urllib.error,urllib.request
+  kubectl --context "$MESH_CONTEXT" -n helixworks-forge exec deployment/control-plane -- python -c 'import urllib.error,urllib.request
 try:
  urllib.request.urlopen("http://generator:8080/generate", timeout=5)
  raise SystemExit("mesh policy failed open: GET /generate succeeded")

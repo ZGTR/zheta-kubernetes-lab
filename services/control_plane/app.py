@@ -14,7 +14,7 @@ from services.shared.config import is_cloud, required_secret, required_url
 
 SERVICE_TOKEN = os.environ.get("SERVICE_TOKEN", "")
 JWT_SECRET = os.environ.get("JWT_SECRET", "")
-JWT_ISSUER = os.environ.get("JWT_ISSUER", "zheta-forge")
+JWT_ISSUER = os.environ.get("JWT_ISSUER", "helixworks-forge")
 JWT_AUDIENCE = os.environ.get("JWT_AUDIENCE", "forge-control-plane")
 required_secret("SERVICE_TOKEN")
 required_secret("JWT_SECRET")

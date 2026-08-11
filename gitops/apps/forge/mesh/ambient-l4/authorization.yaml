@@ -1,6 +1,6 @@
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
-metadata: { name: control-plane-l4-boundary, namespace: zheta-forge }
+metadata: { name: control-plane-l4-boundary, namespace: helixworks-forge }
 spec:
   selector: { matchLabels: { app.kubernetes.io/name: control-plane } }
   action: ALLOW
@@ -8,36 +8,36 @@ spec:
 ---
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
-metadata: { name: generator-l4-boundary, namespace: zheta-forge }
+metadata: { name: generator-l4-boundary, namespace: helixworks-forge }
 spec:
   selector: { matchLabels: { app.kubernetes.io/name: generator } }
   action: ALLOW
   rules:
-    - from: [{ source: { principals: [cluster.local/ns/zheta-forge/sa/control-plane] } }]
+    - from: [{ source: { principals: [cluster.local/ns/helixworks-forge/sa/control-plane] } }]
 ---
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
-metadata: { name: runtime-l4-boundary, namespace: zheta-forge }
+metadata: { name: runtime-l4-boundary, namespace: helixworks-forge }
 spec:
   selector: { matchLabels: { app.kubernetes.io/name: runtime } }
   action: ALLOW
   rules:
-    - from: [{ source: { principals: [cluster.local/ns/zheta-forge/sa/control-plane] } }]
+    - from: [{ source: { principals: [cluster.local/ns/helixworks-forge/sa/control-plane] } }]
 ---
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
-metadata: { name: evidence-l4-boundary, namespace: zheta-forge }
+metadata: { name: evidence-l4-boundary, namespace: helixworks-forge }
 spec:
   selector: { matchLabels: { app.kubernetes.io/name: evidence } }
   action: ALLOW
   rules:
-    - from: [{ source: { principals: [cluster.local/ns/zheta-forge/sa/control-plane] } }]
+    - from: [{ source: { principals: [cluster.local/ns/helixworks-forge/sa/control-plane] } }]
 ---
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
-metadata: { name: broker-l4-boundary, namespace: zheta-forge }
+metadata: { name: broker-l4-boundary, namespace: helixworks-forge }
 spec:
   selector: { matchLabels: { app.kubernetes.io/name: broker } }
   action: ALLOW
   rules:
-    - from: [{ source: { principals: [cluster.local/ns/zheta-forge/sa/control-plane, cluster.local/ns/zheta-forge/sa/evidence] } }]
+    - from: [{ source: { principals: [cluster.local/ns/helixworks-forge/sa/control-plane, cluster.local/ns/helixworks-forge/sa/evidence] } }]

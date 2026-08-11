@@ -1,7 +1,7 @@
 variable "cluster_name" {
   description = "Name of the local Kind cluster and its Docker node containers."
   type        = string
-  default     = "zheta-local"
+  default     = "helixworks-local"
 
   validation {
     condition     = can(regex("^[a-z0-9][a-z0-9-]*$", var.cluster_name))

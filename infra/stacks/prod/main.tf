@@ -15,7 +15,7 @@ provider "aws" {
   }
   default_tags {
     tags = {
-      Product = "zheta-forge", Environment = "prod"
+      Product = "helixworks-forge", Environment = "prod"
     }
   }
 }

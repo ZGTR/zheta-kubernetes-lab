@@ -95,7 +95,7 @@ class CloudContractTest(unittest.TestCase):
         account, region, token = "123456789012", "eu-west-2", "s" * 32
         encoded = lambda values: {key: base64.b64encode(value.encode()).decode() for key, value in values.items()}
         secrets = {"items": [
-            {"metadata": {"name": "control-plane-secrets"}, "data": encoded({"SERVICE_TOKEN": token, "JWT_SECRET": "j" * 32, "CONTROL_DATABASE_URL": "postgresql://user:pass@control/db", "ARTIFACT_BUCKET": "zheta-forge-artifacts", "BROKER_TOPIC": f"arn:aws:sns:{region}:{account}:events.fifo", "EVIDENCE_URL": "http://evidence:8080"})},
+            {"metadata": {"name": "control-plane-secrets"}, "data": encoded({"SERVICE_TOKEN": token, "JWT_SECRET": "j" * 32, "CONTROL_DATABASE_URL": "postgresql://user:pass@control/db", "ARTIFACT_BUCKET": "helixworks-forge-artifacts", "BROKER_TOPIC": f"arn:aws:sns:{region}:{account}:events.fifo", "EVIDENCE_URL": "http://evidence:8080"})},
             {"metadata": {"name": "generator-secrets"}, "data": encoded({"SERVICE_TOKEN": token})},
             {"metadata": {"name": "runtime-secrets"}, "data": encoded({"SERVICE_TOKEN": token, "RUNTIME_DATABASE_URL": "postgresql://user:pass@runtime/db"})},
             {"metadata": {"name": "evidence-secrets"}, "data": encoded({"SERVICE_TOKEN": token, "EVIDENCE_DATABASE_URL": "postgresql://user:pass@evidence/db", "BROKER_SUBSCRIPTION": f"https://sqs.{region}.amazonaws.com/{account}/evidence.fifo"})},
@@ -103,7 +103,7 @@ class CloudContractTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             manifest = Path(root) / "kustomization.yaml"
             services = ("control-plane", "generator", "runtime", "evidence", "broker")
-            image = lambda service, digest: f"- name: zheta-forge/{service}\n  newName: {account}.dkr.ecr.{region}.amazonaws.com/zheta-forge/{service}\n  digest: {digest}"
+            image = lambda service, digest: f"- name: helixworks-forge/{service}\n  newName: {account}.dkr.ecr.{region}.amazonaws.com/helixworks-forge/{service}\n  digest: {digest}"
             digests = [f"sha256:{character * 64}" for character in "abcde"]
             manifest.write_text("\n".join(image(service, digest) for service, digest in zip(services, digests)))
             command = [sys.executable, str(Path(__file__).parents[1] / "scripts/validate-launch-contract.py"), str(manifest), account, region]

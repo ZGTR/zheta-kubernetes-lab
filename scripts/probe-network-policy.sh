@@ -20,7 +20,7 @@ for file in identities.txt network-policies.yaml positive-controls.txt negative-
   [ ! -e "$NETWORK_POLICY_EVIDENCE_DIR/$file" ] || { echo "NetworkPolicy probe veto: evidence file exists: $file" >&2; exit 1; }
 done
 
-namespace=zheta-forge
+namespace=helixworks-forge
 [ "$(kubectl -n "$namespace" get configmap forge-environment -o jsonpath='{.data.ENVIRONMENT}')" = local ]
 [ -z "$(kubectl get namespace "$namespace" -o jsonpath='{.metadata.labels.istio\.io/dataplane-mode}')" ] || { echo 'NetworkPolicy probe veto: namespace is already Ambient-enrolled' >&2; exit 1; }
 [ -z "$(kubectl get namespace "$namespace" -o jsonpath='{.metadata.labels.istio\.io/use-waypoint}')" ] || { echo 'NetworkPolicy probe veto: namespace already uses a waypoint' >&2; exit 1; }

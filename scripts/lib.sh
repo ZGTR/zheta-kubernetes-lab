@@ -3,7 +3,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CLUSTER_NAME="${CLUSTER_NAME:-zheta-local}"
+CLUSTER_NAME="${CLUSTER_NAME:-helixworks-local}"
 export KUBECONFIG="${KUBECONFIG:-$REPO_ROOT/.kube/config}"
 
 require_command() {

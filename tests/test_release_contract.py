@@ -17,9 +17,9 @@ class ReleasePromotionTest(unittest.TestCase):
         for environment in ("dev", "staging", "prod"):
             overlay = (ROOT / "gitops/apps/forge/overlays" / environment / "kustomization.yaml").read_text()
             self.assertIn("blocked-unpinned", overlay)
-            self.assertEqual(5, overlay.count("promotion-blocked.invalid/zheta-forge/"))
+            self.assertEqual(5, overlay.count("promotion-blocked.invalid/helixworks-forge/"))
             self.assertEqual(5, overlay.count(guard_digest))
-            self.assertIn("name: zheta-forge/broker", overlay)
+            self.assertIn("name: helixworks-forge/broker", overlay)
 
     def run_promote(self, digests):
         arguments = ["promote-release.py", "prod", REGISTRY, *digests]
@@ -35,18 +35,18 @@ class ReleasePromotionTest(unittest.TestCase):
         manifest = self.run_promote(DIGESTS)
         self.assertEqual(5, manifest.count("digest: sha256:"))
         for service, digest in zip(SERVICES, DIGESTS):
-            self.assertIn(f"name: zheta-forge/{service}\n", manifest)
-            self.assertIn(f"newName: {REGISTRY}/zheta-forge/{service}\n    digest: {digest}", manifest)
+            self.assertIn(f"name: helixworks-forge/{service}\n", manifest)
+            self.assertIn(f"newName: {REGISTRY}/helixworks-forge/{service}\n    digest: {digest}", manifest)
 
 
 class ReleaseLaunchTest(unittest.TestCase):
     def candidate(self, services):
         images = "\n".join(
-            f"  - name: zheta-forge/{service}\n    newName: {REGISTRY}/zheta-forge/{service}\n    digest: {digest}"
+            f"  - name: helixworks-forge/{service}\n    newName: {REGISTRY}/helixworks-forge/{service}\n    digest: {digest}"
             for service, digest in zip(services, DIGESTS)
         )
         return (
-            "commonAnnotations: { zheta.io/release-state: digest-pinned-awaiting-private-launch }\n"
+            "commonAnnotations: { helixworks.io/release-state: digest-pinned-awaiting-private-launch }\n"
             "configMapGenerator:\n"
             f"images:\n{images}\n"
         )
@@ -71,7 +71,7 @@ class ReleaseLaunchTest(unittest.TestCase):
 
     def test_launch_preserves_broker_pin_while_using_managed_cloud_broker(self):
         launched = self.run_launch(self.candidate(SERVICES))
-        self.assertIn("name: zheta-forge/broker", launched)
+        self.assertIn("name: helixworks-forge/broker", launched)
         self.assertIn("private-contracts-proven", launched)
         self.assertNotIn("{ name: broker, count:", launched)
 

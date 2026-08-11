@@ -1,17 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: zheta
+  name: helixworks
   namespace: argocd
 spec:
   project: default
   source:
-    repoURL: https://github.com/ZGTR/zheta-kubernetes-lab.git
+    repoURL: https://github.com/ZGTR/helixworks-kubernetes-lab.git
     targetRevision: master
-    path: gitops/apps/zheta/overlays/dev
+    path: gitops/apps/helixworks/overlays/dev
   destination:
     server: https://kubernetes.default.svc
-    namespace: zheta
+    namespace: helixworks
   syncPolicy:
     automated:
       prune: true

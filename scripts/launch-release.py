@@ -9,8 +9,8 @@ path = Path(__file__).resolve().parents[1] / "gitops/apps/forge/overlays" / envi
 content = path.read_text()
 services = ("control-plane", "generator", "runtime", "evidence", "broker")
 image_pattern = re.compile(
-    r"^  - name: zheta-forge/(?P<service>[a-z-]+)\n"
-    r"    newName: [0-9]{12}\.dkr\.ecr\.[a-z0-9-]+\.amazonaws\.com/zheta-forge/(?P=service)\n"
+    r"^  - name: helixworks-forge/(?P<service>[a-z-]+)\n"
+    r"    newName: [0-9]{12}\.dkr\.ecr\.[a-z0-9-]+\.amazonaws\.com/helixworks-forge/(?P=service)\n"
     r"    digest: sha256:[0-9a-f]{64}$",
     re.MULTILINE,
 )

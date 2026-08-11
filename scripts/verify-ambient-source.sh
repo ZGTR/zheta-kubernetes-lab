@@ -32,7 +32,7 @@ grep -q 'istio.io/dataplane-mode: ambient' "$manifest"
 grep -q 'istio.io/use-waypoint: forge-waypoint' "$manifest"
 [ "$(grep -c 'apiVersion: security.istio.io/v1$' "$manifest")" -eq 10 ]
 grep -q 'mode: STRICT' "$manifest"
-grep -q 'cluster.local/ns/zheta-forge/sa/forge-waypoint' "$manifest"
+grep -q 'cluster.local/ns/helixworks-forge/sa/forge-waypoint' "$manifest"
 grep -q 'port: 15008' "$manifest"
 grep -q 'cidr: 169.254.7.127/32' "$manifest"
 grep -q 'cidr: fd16:9254:7127:1337:ffff:ffff:ffff:ffff/128' "$manifest"
