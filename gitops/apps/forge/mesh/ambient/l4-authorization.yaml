@@ -1,0 +1,15 @@
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-only-destination-waypoint
+  namespace: zheta-forge
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: zheta-forge
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              - cluster.local/ns/zheta-forge/sa/forge-waypoint

@@ -21,6 +21,7 @@ This public repository is the executable monorepo for both the Kubernetes founda
 | Blocked cloud overlay before promotion | `gitops/apps/forge/overlays/prod/kustomization.yaml` |
 | Digest pinning logic and disabled supply-chain candidate | `scripts/promote-release.py` and `.github/workflows/promote-forge.yaml` |
 | Private launch gate | `scripts/launch-release.sh` and `scripts/launch-release.py` |
+| Optional Ambient Mesh boundary | `gitops/apps/forge/mesh/ambient`, `scripts/install-istio-ambient.sh`, and `docs/istio-ambient.md` |
 | In-cluster Argo CD per private EKS cluster | `argocd/applicationsets/forge-dev.yaml`, `forge-staging.yaml`, `forge-prod.yaml` |
 | Original local Kind IaC | `terraform/main.tf` |
 | Reusable AWS IaC module | `infra/modules/environment/main.tf` |

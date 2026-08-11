@@ -22,3 +22,5 @@ terraform -chdir=infra/stacks/dev plan -var='account_id=ACCOUNT_ID' -var='deploy
 ```
 
 Repeat with the staging and production directories only while authenticated to their explicit deployment roles. A plan is review evidence; an apply consumes billable AWS resources and requires owner approval.
+
+Istio Ambient Mesh is an optional, separately owned cluster add-on described in `docs/istio-ambient.md`. These Terraform stacks do not install it, enroll a namespace, or claim live EKS mesh evidence.
